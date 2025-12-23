@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, MapPin, Building2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import { supabase, type Application } from '../lib/supabase'
+import { Calendar, MapPin, Building2, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 function ApplicantApplicationsPage() {

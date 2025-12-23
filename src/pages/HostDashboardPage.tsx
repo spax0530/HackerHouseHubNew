@@ -7,7 +7,7 @@ import HouseCard from '../components/HouseCard'
 import EmptyState from '../components/EmptyState'
 import ApplicationReviewDrawer from '../components/ApplicationReviewDrawer'
 import { useAuth } from '../context/AuthContext'
-import { supabase, type House, type Application } from '../lib/supabase'
+import { supabase, type House } from '../lib/supabase'
 
 interface HostHouse extends House {
   views: number // Map from impressions
@@ -90,7 +90,7 @@ function HostDashboardPage() {
     }
   }
 
-  const handleHouseAdded = (newHouse: any) => {
+  const handleHouseAdded = (_newHouse: any) => {
     // Refresh data
     fetchDashboardData()
   }
@@ -132,7 +132,7 @@ function HostDashboardPage() {
       
       // Also update selected application if it's open
       if (selectedApplication?.id === applicationId) {
-        setSelectedApplication(prev => ({ ...prev, status: newStatus }))
+        setSelectedApplication((prev: any) => ({ ...prev, status: newStatus }))
       }
 
       toast.success(`Application ${newStatus.toLowerCase()}`, {

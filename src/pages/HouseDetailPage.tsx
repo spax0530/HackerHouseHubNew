@@ -25,7 +25,7 @@ import ApplicationModal from '../components/ApplicationModal'
 import ExternalLinkWarningModal from '../components/ExternalLinkWarningModal'
 import { useAppContext, type HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
-import { supabase, type House } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 interface Resident {
   id: number
@@ -108,7 +108,9 @@ const themeColors: Record<HouseTheme, string> = {
   'General Startup': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
 }
 
-const amenityIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+import type { LucideIcon } from 'lucide-react'
+
+const amenityIcons: Record<string, LucideIcon> = {
   'High-speed WiFi': Wifi,
   'Fully equipped kitchen': UtensilsCrossed,
   'Parking available': Car,

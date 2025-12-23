@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Star, CheckCircle, XCircle } from 'lucide-react'
+import { X, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { getHouseById } from '../data/mockHouses'
 
 interface ApplicationReviewDrawerProps {
   open: boolean

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload, Image as ImageIcon } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import type { HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'

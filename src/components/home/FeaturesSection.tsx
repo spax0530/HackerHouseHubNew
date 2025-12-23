@@ -1,7 +1,8 @@
 import { Shield, Zap, Sparkles } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 interface Feature {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   title: string
   description: string
   iconBg: string

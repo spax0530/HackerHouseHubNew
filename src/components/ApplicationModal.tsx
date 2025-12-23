@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { submitApplication } from '../lib/applications'
-import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 
 // Mock applications store (in-memory) for backward compatibility

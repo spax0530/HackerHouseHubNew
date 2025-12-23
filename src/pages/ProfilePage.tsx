@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { User, Mail, Globe, Linkedin, Github, Camera, Loader2 } from 'lucide-react'
+import { User, Globe, Linkedin, Github, Camera, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
-import { supabase, type Profile } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { uploadProfileAvatar } from '../lib/storage'
 
 function ProfilePage() {

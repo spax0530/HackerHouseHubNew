@@ -3,31 +3,37 @@ import CityCard from '../CityCard'
 const cities = [
   {
     name: 'San Francisco',
+    city: 'San Francisco',
     count: 12,
     image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=600&h=600&fit=crop',
   },
   {
     name: 'Los Angeles',
+    city: 'Los Angeles',
     count: 8,
     image: 'https://images.unsplash.com/photo-1515895306151-8a2f547240c4?w=600&h=600&fit=crop',
   },
   {
     name: 'Austin',
+    city: 'Austin',
     count: 6,
     image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=600&fit=crop',
   },
   {
     name: 'New York',
+    city: 'New York',
     count: 9,
     image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&h=600&fit=crop',
   },
   {
     name: 'Miami',
+    city: 'Miami',
     count: 5,
     image: 'https://images.unsplash.com/photo-1513884923967-4d182d5e9baf?w=600&h=600&fit=crop',
   },
   {
     name: 'Seattle',
+    city: 'Seattle',
     count: 7,
     image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&h=600&fit=crop',
   },

@@ -12,7 +12,7 @@ function ExternalLinkWarningModal({
   open,
   onClose,
   onConfirm,
-  externalLink,
+  externalLink: _externalLink,
   houseName,
 }: ExternalLinkWarningModalProps) {
   if (!open) return null

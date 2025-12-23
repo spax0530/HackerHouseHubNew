@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, User, Building2, Mail, Lock, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAppContext } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 
 interface SignInModalProps {
   open: boolean
@@ -10,7 +10,7 @@ interface SignInModalProps {
 }
 
 function SignInModal({ open, onClose, preselectedRole }: SignInModalProps) {
-  const { signIn, signUp } = useAppContext()
+  const { signIn, signUpBuilder, signUpHost } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [role, setRole] = useState<'applicant' | 'host'>(preselectedRole || 'applicant')
   const [email, setEmail] = useState('')
@@ -29,7 +29,8 @@ function SignInModal({ open, onClose, preselectedRole }: SignInModalProps) {
           setLoading(false)
           return
         }
-        const { error } = await signUp(email, password, fullName, role)
+        const signUp = role === 'host' ? signUpHost : signUpBuilder
+        const { error } = await signUp(email, password, fullName)
         if (error) {
           toast.error(error.message || 'Failed to sign up')
         } else {
