@@ -3,6 +3,8 @@ import { AppProvider } from './context/AppContext'
 import { AuthProvider } from './context/AuthContext'
 import { Toaster } from 'sonner'
 import MainLayout from './layouts/MainLayout'
+import ConfigError from './components/ConfigError'
+import { isSupabaseConfigured } from './lib/supabase'
 import HomePage from './pages/HomePage'
 import SearchResultsPage from './pages/SearchResultsPage'
 import FavoritesPage from './pages/FavoritesPage'
@@ -18,6 +20,11 @@ import ProfilePage from './pages/ProfilePage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
+  // Check if Supabase is configured
+  if (!isSupabaseConfigured()) {
+    return <ConfigError />
+  }
+
   return (
     <AuthProvider>
       <AppProvider>
