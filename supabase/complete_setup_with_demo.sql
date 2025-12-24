@@ -329,9 +329,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'david.patel@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'Hardware Lab',
@@ -357,9 +355,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'emma.wilson@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'General Startup House',
@@ -385,9 +381,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'mike.rodriguez@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'AI Research Lab',
