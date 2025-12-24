@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS applications (
   phone TEXT,
   linkedin TEXT,
   portfolio TEXT,
-  current_role TEXT,
+  "current_role" TEXT,
   company TEXT,
   skills TEXT,
   years_experience INTEGER,
