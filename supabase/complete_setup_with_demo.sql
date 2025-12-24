@@ -273,9 +273,7 @@ SELECT
   NOW() as created_at,
   NOW() as updated_at
 FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'Climate Tech Hub',
@@ -301,9 +299,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'Crypto Builders House',
@@ -407,9 +403,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'Climate Solutions House',
@@ -435,9 +429,7 @@ SELECT
   NOW(),
   NOW()
 FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1
-
 UNION ALL
-
 SELECT 
   p.id,
   'Crypto Innovation Hub',
