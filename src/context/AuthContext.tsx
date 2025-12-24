@@ -59,14 +59,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       // Add 10 second timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timed out')), 10000)
+      // Return error object instead of rejecting to avoid breaking the flow
+      const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+        setTimeout(() => resolve({ 
+          data: null, 
+          error: { message: 'Profile fetch timed out' } 
+        }), 10000)
       )
 
-      const { data, error } = await Promise.race([
+      const result = await Promise.race([
         profilePromise,
         timeoutPromise
       ]) as { data: any; error: any }
+
+      const { data, error } = result
 
       if (error) {
         console.error('Error fetching profile:', error)

@@ -14,28 +14,49 @@ function SignInPage() {
 
   // Redirect after successful sign-in when profile is loaded
   useEffect(() => {
-    if (justSignedInRef.current && user && profile && !authLoading) {
-      // User just signed in and profile is loaded
-      justSignedInRef.current = false
-      setLoading(false)
-      
-      if (profile.role === 'host') {
-        navigate('/host/dashboard')
+    if (justSignedInRef.current && user && !authLoading) {
+      // User just signed in - wait for profile or timeout
+      if (profile) {
+        // Profile loaded successfully
+        justSignedInRef.current = false
+        setLoading(false)
+        
+        if (profile.role === 'host') {
+          navigate('/host/dashboard')
+        } else if (profile.role === 'applicant') {
+          navigate('/applications')
+        } else {
+          // Fallback if role is null/unknown
+          navigate('/')
+        }
       } else {
-        // Default for builders or unknown
-        navigate('/applications')
+        // Profile is null - might still be loading or failed
+        // Wait a bit more, but if it takes too long, redirect anyway
+        const timeout = setTimeout(() => {
+          if (justSignedInRef.current && user && !profile) {
+            justSignedInRef.current = false
+            setLoading(false)
+            // Redirect to home if profile fetch failed
+            navigate('/')
+            toast.info('Signed in, but profile information is unavailable')
+          }
+        }, 5000) // Wait 5 seconds for profile
+
+        return () => clearTimeout(timeout)
       }
     }
   }, [user, profile, authLoading, navigate])
 
-  // If user is already logged in, redirect them away
+  // If user is already logged in (but didn't just sign in), redirect them away
   useEffect(() => {
-    if (user && profile && !authLoading && !justSignedInRef.current) {
-      if (profile.role === 'host') {
+    if (user && !authLoading && !justSignedInRef.current) {
+      // Only redirect if we have a profile with a role
+      if (profile?.role === 'host') {
         navigate('/host/dashboard', { replace: true })
-      } else {
+      } else if (profile?.role === 'applicant') {
         navigate('/applications', { replace: true })
       }
+      // If no profile or role, stay on sign-in page (might be creating account)
     }
   }, [user, profile, authLoading, navigate])
 
@@ -47,8 +68,8 @@ function SignInPage() {
     try {
       // Add timeout to prevent hanging (10 seconds)
       const signInPromise = signIn(email, password)
-      const timeoutPromise = new Promise<{ error: any }>((_, reject) => 
-        setTimeout(() => reject(new Error('Sign-in request timed out. Please try again.')), 10000)
+      const timeoutPromise = new Promise<{ error: any }>((resolve) => 
+        setTimeout(() => resolve({ error: { message: 'Sign-in request timed out. Please try again.' } }), 10000)
       )
 
       const result = await Promise.race([signInPromise, timeoutPromise])
