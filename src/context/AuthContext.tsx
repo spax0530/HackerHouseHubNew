@@ -94,25 +94,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     })
 
-    // Even if there's an email error, the user might still be created
-    // Check if user was created despite email error
+    // The trigger handle_new_user() automatically creates a profile when a user signs up
+    // So we don't need to manually create it here. If the trigger fails, we can update it.
     if (data?.user) {
-      // Try to create profile
-      const { error: profileError } = await supabase
+      // Wait a moment for the trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Check if profile exists, if not, create it (fallback)
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
+        .select('id')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!existingProfile) {
+        // Profile wasn't created by trigger, create it manually
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
             id: data.user.id,
             email: email,
             full_name: fullName,
             role: role
-        })
-        .select()
-        .single()
+          })
 
-      if (profileError) {
+        if (profileError && !profileError.message?.includes('duplicate')) {
           console.error('Error creating profile:', profileError)
-          // If profile creation fails, return that error
           return { error: profileError }
+        }
+      } else {
+        // Profile exists, update it with the role if needed
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            email: email,
+            full_name: fullName,
+            role: role
+          })
+          .eq('id', data.user.id)
+
+        if (updateError) {
+          console.error('Error updating profile:', updateError)
+        }
       }
 
       // If user was created successfully, don't return email error
