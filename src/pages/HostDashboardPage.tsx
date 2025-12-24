@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Eye, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import DashboardSidebar from '../components/dashboard/DashboardSidebar'
@@ -15,7 +16,8 @@ interface HostHouse extends House {
 }
 
 function HostDashboardPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [currentTab, setCurrentTab] = useState('overview')
   const [hostHouses, setHostHouses] = useState<HostHouse[]>([])
   const [applications, setApplications] = useState<any[]>([])
@@ -24,13 +26,17 @@ function HostDashboardPage() {
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null)
 
+  // Check for query parameter to open wizard
   useEffect(() => {
-    if (user) {
-      fetchDashboardData()
+    const shouldOpenWizard = searchParams.get('add') === 'true'
+    if (shouldOpenWizard) {
+      setIsAddHouseWizardOpen(true)
+      // Remove query parameter from URL
+      setSearchParams({}, { replace: true })
     }
-  }, [user])
+  }, [searchParams, setSearchParams])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       // 1. Fetch houses
@@ -88,7 +94,31 @@ function HostDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  // Handle visibility change to refetch data when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Refetch data when tab becomes visible (only if we have a user)
+        fetchDashboardData()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user, fetchDashboardData])
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      fetchDashboardData()
+    } else if (!user && !authLoading) {
+      // If no user and auth is done loading, stop showing loading spinner
+      setLoading(false)
+    }
+  }, [user, authLoading, fetchDashboardData])
 
   const handleHouseAdded = (_newHouse: any) => {
     // Refresh data
@@ -609,7 +639,13 @@ function HostDashboardPage() {
       {/* Add House Wizard */}
       <AddHouseWizard
         open={isAddHouseWizardOpen}
-        onOpenChange={setIsAddHouseWizardOpen}
+        onOpenChange={(open) => {
+          setIsAddHouseWizardOpen(open)
+          // Remove query parameter when closing
+          if (!open && searchParams.get('add') === 'true') {
+            setSearchParams({}, { replace: true })
+          }
+        }}
         onHouseAdded={handleHouseAdded}
       />
 

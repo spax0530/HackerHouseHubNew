@@ -167,7 +167,7 @@ function Navbar() {
                   {/* List Your House (Host Only or if user is host) */}
                   {isHost && (
                     <Link
-                      to="/host/dashboard" // Or direct to add house wizard if supported via query param
+                      to="/host/dashboard?add=true"
                       className="hidden sm:inline-flex items-center px-3 md:px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
                     >
                       List Your House
