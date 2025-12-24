@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
-import { User, Globe, Linkedin, Github, Camera, Loader2 } from 'lucide-react'
+import { User, Globe, Linkedin, Github, Camera, Loader2, Building2, User as UserIcon, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { uploadProfileAvatar } from '../lib/storage'
+import { useNavigate } from 'react-router-dom'
 
 function ProfilePage() {
-  const { user, profile: initialProfile } = useAuth()
+  const { user, profile: initialProfile, switchRole } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [switchingRole, setSwitchingRole] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -63,6 +66,34 @@ function ProfilePage() {
     }
   }
 
+  const handleRoleSwitch = async (newRole: 'applicant' | 'host') => {
+    if (!user || switchingRole) return
+    if (initialProfile?.role === newRole) {
+      toast.info(`You're already in ${newRole === 'host' ? 'Host' : 'Builder'} mode`)
+      return
+    }
+
+    setSwitchingRole(true)
+    try {
+      const { error } = await switchRole(newRole)
+      if (error) {
+        toast.error(error.message || 'Failed to switch role')
+        return
+      }
+
+      // Redirect based on new role
+      if (newRole === 'host') {
+        navigate('/host/dashboard')
+      } else {
+        navigate('/applications')
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to switch role')
+    } finally {
+      setSwitchingRole(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -103,6 +134,67 @@ function ProfilePage() {
             <p className="mt-1 text-gray-600 dark:text-gray-400">
               Manage your public profile information
             </p>
+          </div>
+
+          {/* Role Switcher */}
+          <div className="p-6 sm:p-8 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-800/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Account Role</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Switch between Builder and Host modes. You can use both features with the same account.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => handleRoleSwitch('applicant')}
+                disabled={switchingRole || initialProfile?.role === 'applicant'}
+                className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                  initialProfile?.role === 'applicant'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                } ${switchingRole ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <UserIcon size={24} />
+                <div className="text-center">
+                  <div className="font-medium">Builder</div>
+                  <div className="text-xs mt-1 opacity-75">
+                    {initialProfile?.role === 'applicant' ? 'Current Mode' : 'Switch to Builder'}
+                  </div>
+                </div>
+                {switchingRole && initialProfile?.role !== 'applicant' && (
+                  <RefreshCw size={16} className="animate-spin" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleSwitch('host')}
+                disabled={switchingRole || initialProfile?.role === 'host'}
+                className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
+                  initialProfile?.role === 'host'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                } ${switchingRole ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <Building2 size={24} />
+                <div className="text-center">
+                  <div className="font-medium">Host</div>
+                  <div className="text-xs mt-1 opacity-75">
+                    {initialProfile?.role === 'host' ? 'Current Mode' : 'Switch to Host'}
+                  </div>
+                </div>
+                {switchingRole && initialProfile?.role !== 'host' && (
+                  <RefreshCw size={16} className="animate-spin" />
+                )}
+              </button>
+            </div>
+            {initialProfile?.role && (
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                Currently viewing as: <span className="font-medium capitalize">{initialProfile.role === 'applicant' ? 'Builder' : 'Host'}</span>
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">

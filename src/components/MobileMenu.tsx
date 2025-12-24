@@ -36,29 +36,32 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       ]
     }
 
-    if (isHost) {
-      return [
-        { path: '/host/dashboard', label: 'Host Dashboard' },
-        { path: '/profile', label: 'Profile Settings' },
-      ]
-    }
-
-    if (isBuilder) {
-      return [
+    // For authenticated users, show links based on current role
+    // Users can switch roles in Profile Settings
+    const links = []
+    
+    // Builder features (show when not in host mode)
+    if (!isHost) {
+      links.push(
         { path: '/', label: 'Home' },
         { path: '/search', label: 'Search Houses' },
-        { path: '/favorites', label: 'Saved', badge: favorites.length > 0 ? favorites.length : null },
-        { path: '/applications', label: 'My Applications' },
-        { path: '/profile', label: 'Profile Settings' },
-      ]
+        { path: '/favorites', label: 'Saved', badge: favorites.length > 0 ? favorites.length : null }
+      )
+      
+      if (isBuilder) {
+        links.push({ path: '/applications', label: 'My Applications' })
+      }
     }
-
-    // Fallback if user exists but role is null (shouldn't happen often)
-    return [
-      { path: '/', label: 'Home' },
-      { path: '/search', label: 'Search' },
-      { path: '/profile', label: 'Profile' },
-    ]
+    
+    // Host features
+    if (isHost) {
+      links.push({ path: '/host/dashboard', label: 'Host Dashboard' })
+    }
+    
+    // Common links
+    links.push({ path: '/profile', label: 'Profile Settings' })
+    
+    return links
   }
 
   const navLinks = getNavLinks()
@@ -105,7 +108,7 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                       {profile?.full_name || user.email}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                      {profile?.role || 'User'}
+                      {profile?.role === 'host' ? 'Host' : profile?.role === 'applicant' ? 'Builder' : 'User'}
                     </p>
                   </div>
                   <Settings size={16} className="text-gray-400" />

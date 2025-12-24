@@ -10,6 +10,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUpBuilder: (email: string, password: string, fullName: string) => Promise<{ error: any }>
   signUpHost: (email: string, password: string, fullName: string) => Promise<{ error: any }>
+  switchRole: (newRole: 'applicant' | 'host') => Promise<{ error: any }>
   signOut: () => Promise<void>
 }
 
@@ -158,6 +159,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return signUp(email, password, fullName, 'host')
   }
 
+  const switchRole = async (newRole: 'applicant' | 'host') => {
+    if (!user) {
+      return { error: { message: 'Not authenticated' } }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', user.id)
+
+      if (error) {
+        console.error('Error switching role:', error)
+        return { error }
+      }
+
+      // Refresh profile
+      await fetchProfile(user.id)
+      toast.success(`Switched to ${newRole === 'host' ? 'Host' : 'Builder'} mode`)
+      return { error: null }
+    } catch (error) {
+      console.error('Error switching role:', error)
+      return { error }
+    }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
     setProfile(null)
@@ -172,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUpBuilder,
     signUpHost,
+    switchRole,
     signOut,
   }
 

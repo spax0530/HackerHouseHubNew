@@ -19,6 +19,8 @@ function Navbar() {
 
   const isHost = profile?.role === 'host'
   const isBuilder = profile?.role === 'applicant'
+  // Users can switch roles, so we show options based on current role
+  // But we can add a "Switch Role" option in the profile menu
 
   return (
     <>
@@ -36,8 +38,89 @@ function Navbar() {
 
             {/* Center: Nav Links (Desktop) */}
             <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-              {/* Common Links or based on role */}
-              {!isHost && (
+              {/* Common Links - show for all authenticated users */}
+              {user && (
+                <>
+                  {!isHost && (
+                    <>
+                      <NavLink
+                        to="/"
+                        className={({ isActive }) =>
+                          `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isActive && window.location.pathname === '/'
+                              ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                          }`
+                        }
+                      >
+                        Home
+                      </NavLink>
+                      <NavLink
+                        to="/search"
+                        className={({ isActive }) =>
+                          `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                          }`
+                        }
+                      >
+                        Search
+                      </NavLink>
+                      <NavLink
+                        to="/favorites"
+                        className={({ isActive }) =>
+                          `px-3 py-2 rounded-lg text-sm font-medium transition-colors relative ${
+                            isActive
+                              ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                          }`
+                        }
+                      >
+                        Saved
+                        {favorites.length > 0 && (
+                          <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
+                            {favorites.length}
+                          </span>
+                        )}
+                      </NavLink>
+                    </>
+                  )}
+
+                  {isBuilder && (
+                    <NavLink
+                      to="/applications"
+                      className={({ isActive }) =>
+                        `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                        }`
+                      }
+                    >
+                      My Applications
+                    </NavLink>
+                  )}
+
+                  {isHost && (
+                    <NavLink
+                      to="/host/dashboard"
+                      className={({ isActive }) =>
+                        `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                        }`
+                      }
+                    >
+                      Host Dashboard
+                    </NavLink>
+                  )}
+                </>
+              )}
+
+              {/* Public links */}
+              {!user && (
                 <>
                   <NavLink
                     to="/"
@@ -63,54 +146,7 @@ function Navbar() {
                   >
                     Search
                   </NavLink>
-                  <NavLink
-                    to="/favorites"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-lg text-sm font-medium transition-colors relative ${
-                        isActive
-                          ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
-                      }`
-                    }
-                  >
-                    Saved
-                    {favorites.length > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white">
-                        {favorites.length}
-                      </span>
-                    )}
-                  </NavLink>
                 </>
-              )}
-
-              {isBuilder && (
-                <NavLink
-                  to="/applications"
-                  className={({ isActive }) =>
-                    `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
-                    }`
-                  }
-                >
-                  My Applications
-                </NavLink>
-              )}
-
-              {isHost && (
-                <NavLink
-                  to="/host/dashboard"
-                  className={({ isActive }) =>
-                    `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
-                    }`
-                  }
-                >
-                  Host Dashboard
-                </NavLink>
               )}
             </nav>
 
