@@ -21,14 +21,17 @@ function SignInPage() {
         justSignedInRef.current = false
         setLoading(false)
         
-        if (profile.role === 'host') {
-          navigate('/host/dashboard')
-        } else if (profile.role === 'applicant') {
-          navigate('/applications')
-        } else {
-          // Fallback if role is null/unknown
-          navigate('/')
-        }
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          if (profile.role === 'host') {
+            navigate('/host/dashboard', { replace: true })
+          } else if (profile.role === 'applicant') {
+            navigate('/applications', { replace: true })
+          } else {
+            // Fallback if role is null/unknown
+            navigate('/', { replace: true })
+          }
+        }, 100)
       } else {
         // Profile is null - might still be loading or failed
         // Wait a bit more, but if it takes too long, redirect anyway
@@ -37,10 +40,10 @@ function SignInPage() {
             justSignedInRef.current = false
             setLoading(false)
             // Redirect to home if profile fetch failed
-            navigate('/')
-            toast.info('Signed in, but profile information is unavailable')
+            navigate('/', { replace: true })
+            toast.info('Signed in successfully. You can access your dashboard from the menu.')
           }
-        }, 5000) // Wait 5 seconds for profile
+        }, 3000) // Wait 3 seconds for profile
 
         return () => clearTimeout(timeout)
       }

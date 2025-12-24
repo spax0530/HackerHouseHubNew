@@ -11,7 +11,7 @@ function ProfilePage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [switchingRole, setSwitchingRole] = useState(false)
+  const [switchingRole, setSwitchingRole] = useState<'applicant' | 'host' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -73,11 +73,12 @@ function ProfilePage() {
       return
     }
 
-    setSwitchingRole(true)
+    setSwitchingRole(newRole) // Track which role we're switching to
     try {
       const { error } = await switchRole(newRole)
       if (error) {
         toast.error(error.message || 'Failed to switch role')
+        setSwitchingRole(null)
         return
       }
 
@@ -89,8 +90,10 @@ function ProfilePage() {
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to switch role')
+      setSwitchingRole(null)
     } finally {
-      setSwitchingRole(false)
+      // Don't reset here - let the redirect happen, or reset after a delay
+      setTimeout(() => setSwitchingRole(null), 1000)
     }
   }
 
@@ -150,12 +153,12 @@ function ProfilePage() {
               <button
                 type="button"
                 onClick={() => handleRoleSwitch('applicant')}
-                disabled={switchingRole || initialProfile?.role === 'applicant'}
+                disabled={switchingRole !== null || initialProfile?.role === 'applicant'}
                 className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
                   initialProfile?.role === 'applicant'
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                     : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                } ${switchingRole ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                } ${switchingRole !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <UserIcon size={24} />
                 <div className="text-center">
@@ -164,19 +167,19 @@ function ProfilePage() {
                     {initialProfile?.role === 'applicant' ? 'Current Mode' : 'Switch to Builder'}
                   </div>
                 </div>
-                {switchingRole && initialProfile?.role !== 'applicant' && (
+                {switchingRole === 'applicant' && (
                   <RefreshCw size={16} className="animate-spin" />
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => handleRoleSwitch('host')}
-                disabled={switchingRole || initialProfile?.role === 'host'}
+                disabled={switchingRole !== null || initialProfile?.role === 'host'}
                 className={`flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all ${
                   initialProfile?.role === 'host'
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                     : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                } ${switchingRole ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                } ${switchingRole !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <Building2 size={24} />
                 <div className="text-center">
@@ -185,7 +188,7 @@ function ProfilePage() {
                     {initialProfile?.role === 'host' ? 'Current Mode' : 'Switch to Host'}
                   </div>
                 </div>
-                {switchingRole && initialProfile?.role !== 'host' && (
+                {switchingRole === 'host' && (
                   <RefreshCw size={16} className="animate-spin" />
                 )}
               </button>
