@@ -1,55 +1,83 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../context/AuthContext'
-import { supabase } from '../../lib/supabase'
 
 function SignInPage() {
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const { signIn, user, profile, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const justSignedInRef = useRef(false)
+
+  // Redirect after successful sign-in when profile is loaded
+  useEffect(() => {
+    if (justSignedInRef.current && user && profile && !authLoading) {
+      // User just signed in and profile is loaded
+      justSignedInRef.current = false
+      setLoading(false)
+      
+      if (profile.role === 'host') {
+        navigate('/host/dashboard')
+      } else {
+        // Default for builders or unknown
+        navigate('/applications')
+      }
+    }
+  }, [user, profile, authLoading, navigate])
+
+  // If user is already logged in, redirect them away
+  useEffect(() => {
+    if (user && profile && !authLoading && !justSignedInRef.current) {
+      if (profile.role === 'host') {
+        navigate('/host/dashboard', { replace: true })
+      } else {
+        navigate('/applications', { replace: true })
+      }
+    }
+  }, [user, profile, authLoading, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    justSignedInRef.current = false
 
     try {
-      const { error } = await signIn(email, password)
+      // Add timeout to prevent hanging (10 seconds)
+      const signInPromise = signIn(email, password)
+      const timeoutPromise = new Promise<{ error: any }>((_, reject) => 
+        setTimeout(() => reject(new Error('Sign-in request timed out. Please try again.')), 10000)
+      )
+
+      const result = await Promise.race([signInPromise, timeoutPromise])
+      const { error } = result
+
       if (error) {
         toast.error(error.message || 'Failed to sign in')
         setLoading(false)
+        justSignedInRef.current = false
         return
       }
 
-      // Successful sign in
+      // Successful sign in - mark that we just signed in
+      justSignedInRef.current = true
       toast.success('Signed in successfully')
-
-      // Determine redirection based on role
-      // We need to fetch the profile manually here to know where to redirect immediately
-      // The AuthContext will also fetch it, but we want to redirect now.
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-
-        if (profile?.role === 'host') {
-          navigate('/host/dashboard')
-        } else {
-          // Default for builders or unknown
-          navigate('/applications') 
+      
+      // Profile will be fetched by AuthContext, and useEffect will handle redirect
+      // Set a fallback timeout in case profile fetch hangs
+      setTimeout(() => {
+        if (justSignedInRef.current && loading) {
+          setLoading(false)
+          justSignedInRef.current = false
+          toast.error('Profile loading timed out. Please refresh the page.')
         }
-      } else {
-        navigate('/')
-      }
+      }, 15000) // 15 second fallback
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred')
+      toast.error(error.message || 'An error occurred during sign-in')
       setLoading(false)
+      justSignedInRef.current = false
     }
   }
 

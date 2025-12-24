@@ -49,23 +49,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Fetch user profile
+  // Fetch user profile with timeout
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
+      // Add 10 second timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timed out')), 10000)
+      )
+
+      const { data, error } = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as { data: any; error: any }
+
       if (error) {
         console.error('Error fetching profile:', error)
+        // Set profile to null if fetch fails, but don't block auth
+        setProfile(null)
+      } else {
+        setProfile(data)
       }
-      setProfile(data)
     } catch (error) {
       console.error('Error fetching profile:', error)
+      // Set profile to null on error, but don't block auth
+      setProfile(null)
     } finally {
-        // Ensure loading is set to false even if profile fetch fails
+      // Ensure loading is set to false even if profile fetch fails
     }
   }
 
