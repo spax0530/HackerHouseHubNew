@@ -241,7 +241,7 @@ VALUES
    'https://linkedin.com/in/emmawilson', 'https://github.com/emmawilson', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Insert demo houses
+-- Insert demo houses (using separate INSERT statements to avoid UNION ALL issues)
 INSERT INTO houses (
   host_id, name, city, state, theme, price_per_month, duration, capacity,
   status, admin_status, description, amenities, highlights, application_link,
@@ -272,8 +272,13 @@ SELECT
   0 as applications_count,
   NOW() as created_at,
   NOW() as updated_at
-FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'Climate Tech Hub',
@@ -298,8 +303,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'Crypto Builders House',
@@ -324,8 +334,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'david.patel@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'david.patel@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'Hardware Lab',
@@ -350,8 +365,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'emma.wilson@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'emma.wilson@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'General Startup House',
@@ -376,8 +396,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'mike.rodriguez@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'mike.rodriguez@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'AI Research Lab',
@@ -402,8 +427,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'sarah.chen@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'Climate Solutions House',
@@ -428,8 +458,13 @@ SELECT
   0,
   NOW(),
   NOW()
-FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1
-UNION ALL
+FROM profiles p WHERE p.email = 'jessica.kim@example.com' LIMIT 1;
+
+INSERT INTO houses (
+  host_id, name, city, state, theme, price_per_month, duration, capacity,
+  status, admin_status, description, amenities, highlights, application_link,
+  images, featured, impressions, applications_count, created_at, updated_at
+)
 SELECT 
   p.id,
   'Crypto Innovation Hub',
@@ -467,4 +502,3 @@ BEGIN
   RAISE NOTICE '🎉 Your HackerHouseHub is ready!';
   RAISE NOTICE 'Visit your app to see the demo houses.';
 END $$;
-
