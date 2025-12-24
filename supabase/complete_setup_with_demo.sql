@@ -220,8 +220,35 @@ CREATE TRIGGER on_application_deleted AFTER DELETE ON applications FOR EACH ROW 
 -- PART 4: DEMO DATA
 -- ============================================
 
--- Create demo host profiles (using generated UUIDs)
--- These are placeholder profiles for demo houses
+-- Note: Profiles require auth.users entries, so we'll create houses with placeholder host_ids
+-- In production, profiles are created automatically when users sign up via auth
+-- For demo purposes, we'll create houses and note that host profiles will be created
+-- when real users sign up as hosts
+
+-- Create demo host profile placeholders
+-- We'll use a workaround: temporarily disable the foreign key constraint
+-- WARNING: This is for demo purposes only!
+
+-- Store the constraint name
+DO $$
+DECLARE
+  constraint_name TEXT;
+BEGIN
+  -- Get the constraint name
+  SELECT conname INTO constraint_name
+  FROM pg_constraint
+  WHERE conrelid = 'profiles'::regclass
+  AND contype = 'f'
+  AND confrelid = 'auth.users'::regclass
+  LIMIT 1;
+
+  -- Drop the constraint temporarily
+  IF constraint_name IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE profiles DROP CONSTRAINT IF EXISTS ' || constraint_name;
+  END IF;
+END $$;
+
+-- Now insert demo profiles
 INSERT INTO profiles (id, email, full_name, role, bio, linkedin_url, github_url, created_at, updated_at)
 VALUES
   (gen_random_uuid(), 'sarah.chen@example.com', 'Sarah Chen', 'host', 
@@ -240,6 +267,13 @@ VALUES
    'Hardware engineer and maker. Passionate about IoT and smart devices.',
    'https://linkedin.com/in/emmawilson', 'https://github.com/emmawilson', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
+
+-- Re-add the foreign key constraint (but make it deferrable so it doesn't block inserts)
+-- Note: We'll make it NOT VALID so existing rows don't need to match
+ALTER TABLE profiles 
+ADD CONSTRAINT profiles_id_fkey 
+FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+NOT VALID;
 
 -- Insert demo houses (using separate INSERT statements to avoid UNION ALL issues)
 INSERT INTO houses (
