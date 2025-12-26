@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Eye, FileText, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Plus, Eye, FileText, CheckCircle, XCircle, Clock, Edit } from 'lucide-react'
 import { toast } from 'sonner'
 import DashboardSidebar from '../components/dashboard/DashboardSidebar'
 import AddHouseWizard from '../components/AddHouseWizard'
@@ -23,6 +23,7 @@ function HostDashboardPage() {
   const [applications, setApplications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddHouseWizardOpen, setIsAddHouseWizardOpen] = useState(false)
+  const [editingHouse, setEditingHouse] = useState<HostHouse | null>(null)
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null)
 
@@ -123,6 +124,8 @@ function HostDashboardPage() {
   const handleHouseAdded = (_newHouse: any) => {
     // Refresh data
     fetchDashboardData()
+    // Reset editing state
+    setEditingHouse(null)
   }
 
   const handleStatusChange = async (houseId: number, newStatus: 'Recruiting Now' | 'Full' | 'Closed') => {
@@ -427,6 +430,16 @@ function HostDashboardPage() {
                             <option value="Closed">Closed</option>
                           </select>
                         </div>
+                        <button
+                          onClick={() => {
+                            setEditingHouse(house)
+                            setIsAddHouseWizardOpen(true)
+                          }}
+                          className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Edit size={16} />
+                          Edit House
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -641,12 +654,16 @@ function HostDashboardPage() {
         open={isAddHouseWizardOpen}
         onOpenChange={(open) => {
           setIsAddHouseWizardOpen(open)
+          if (!open) {
+            setEditingHouse(null) // Clear editing state when closing
+          }
           // Remove query parameter when closing
           if (!open && searchParams.get('add') === 'true') {
             setSearchParams({}, { replace: true })
           }
         }}
         onHouseAdded={handleHouseAdded}
+        editingHouse={editingHouse}
       />
 
       {/* Application Review Drawer */}

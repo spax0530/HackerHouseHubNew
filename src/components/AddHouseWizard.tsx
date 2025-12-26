@@ -3,13 +3,14 @@ import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload, Ar
 import { toast } from 'sonner'
 import type { HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, type House } from '../lib/supabase'
 import { uploadHouseImage } from '../lib/storage'
 
 interface AddHouseWizardProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onHouseAdded: (house: any) => void
+  editingHouse?: House | null // Optional house to edit
 }
 
 interface HouseFormData {
@@ -31,6 +32,7 @@ interface HouseFormData {
   // Step 4
   imageFiles: File[]
   imagePreviews: string[]
+  existingImages: string[] // Track which previews are existing URLs (not new uploads)
 }
 
 const availableAmenities = [
@@ -79,7 +81,7 @@ const restoreFormData = (): { formData: Partial<HouseFormData>; step: number } =
   }
 }
 
-function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProps) {
+function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddHouseWizardProps) {
   const { user } = useAuth()
   
   // Restore data synchronously on mount
@@ -103,11 +105,74 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
     applicationLink: restored.formData.applicationLink || '',
     imageFiles: [],
     imagePreviews: [],
+    existingImages: [],
   })
 
-  // Save form data to localStorage whenever it changes (debounced to avoid excessive writes)
+  // Load house data when editing
   useEffect(() => {
-    if (open) {
+    if (open && editingHouse) {
+      // Populate form with existing house data
+      const existingImages = editingHouse.images || []
+      setFormData({
+        name: editingHouse.name || '',
+        city: editingHouse.city || '',
+        state: editingHouse.state || '',
+        theme: (editingHouse.theme as HouseTheme) || '',
+        capacity: editingHouse.capacity || 0,
+        pricePerMonth: editingHouse.price_per_month || 0,
+        duration: editingHouse.duration || '',
+        status: editingHouse.status || 'Recruiting Now',
+        description: editingHouse.description || '',
+        highlights: editingHouse.highlights?.join('\n') || '',
+        amenities: editingHouse.amenities || [],
+        applicationLink: editingHouse.application_link || '',
+        imageFiles: [], // New files to upload
+        imagePreviews: existingImages, // Existing images as URLs
+        existingImages: existingImages, // Track which are existing
+      })
+      setCurrentStep(1)
+      // Clear localStorage when editing (don't want to mix draft with edit)
+      localStorage.removeItem(STORAGE_KEY)
+    } else if (open && !editingHouse) {
+      // When opening for new house, restore from localStorage if available
+      const saved = restoreFormData()
+      if (saved.formData.name || saved.formData.city) {
+        // Only restore if there's actual saved data
+        setFormData(prev => ({
+          ...prev,
+          ...saved.formData,
+          imageFiles: [],
+          imagePreviews: [],
+          existingImages: [],
+        }))
+        setCurrentStep(saved.step)
+      } else {
+        // Reset to empty form
+        setFormData({
+          name: '',
+          city: '',
+          state: '',
+          theme: '',
+          capacity: 0,
+          pricePerMonth: 0,
+          duration: '',
+          status: 'Recruiting Now',
+          description: '',
+          highlights: '',
+          amenities: [],
+          applicationLink: '',
+          imageFiles: [],
+          imagePreviews: [],
+          existingImages: [],
+        })
+        setCurrentStep(1)
+      }
+    }
+  }, [open, editingHouse])
+
+  // Save form data to localStorage whenever it changes (only for new houses, not edits)
+  useEffect(() => {
+    if (open && !editingHouse) {
       try {
         // Only save serializable data (exclude File objects and blob URLs)
         const dataToSave = {
@@ -130,7 +195,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         console.error('Error saving form data to localStorage:', error)
       }
     }
-  }, [formData, currentStep, open])
+  }, [formData, currentStep, open, editingHouse])
 
   const updateField = (field: keyof HouseFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -174,19 +239,26 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         toast.error('Only image files are allowed')
       }
 
-      // Limit to 5 images total
-      const totalFiles = [...formData.imageFiles, ...validFiles].slice(0, 5)
+      // Limit to 5 images total (existing + new)
+      const currentTotal = formData.imagePreviews.length
+      const remainingSlots = Math.max(0, 5 - currentTotal)
+      const filesToAdd = validFiles.slice(0, remainingSlots)
       
-      // Create previews
-      const newPreviews = totalFiles.map(file => URL.createObjectURL(file))
+      if (filesToAdd.length < validFiles.length) {
+        toast.warning(`Only ${remainingSlots} more image(s) can be added (max 5 total)`)
+      }
+
+      // Create previews for new files
+      const newPreviews = filesToAdd.map(file => URL.createObjectURL(file))
       
-      // Revoke old previews to avoid memory leaks
-      formData.imagePreviews.forEach(url => URL.revokeObjectURL(url))
+      // Combine existing images with new previews
+      const allPreviews = [...formData.imagePreviews, ...newPreviews]
+      const allFiles = [...formData.imageFiles, ...filesToAdd]
 
       setFormData(prev => ({
         ...prev,
-        imageFiles: totalFiles,
-        imagePreviews: newPreviews
+        imageFiles: allFiles,
+        imagePreviews: allPreviews
       }))
     }
     // Reset input
@@ -197,14 +269,31 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
 
   const removeImage = (index: number) => {
     setFormData(prev => {
-      const newFiles = prev.imageFiles.filter((_, i) => i !== index)
+      const preview = prev.imagePreviews[index]
+      const isExisting = prev.existingImages.includes(preview)
+      
+      // If it's a new file preview (blob URL), revoke it
+      if (!isExisting && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview)
+      }
+      
+      // Find the corresponding file index (only for new files)
+      // Count how many existing images come before this index
+      const existingBeforeIndex = prev.existingImages.filter((_, i) => i < index).length
+      const newFileIndex = index - existingBeforeIndex
+      
+      const newFiles = newFileIndex >= 0 
+        ? prev.imageFiles.filter((_, i) => i !== newFileIndex)
+        : prev.imageFiles
+      
       const newPreviews = prev.imagePreviews.filter((_, i) => i !== index)
-      // Revoke the removed preview URL
-      URL.revokeObjectURL(prev.imagePreviews[index])
+      const newExisting = prev.existingImages.filter((_, i) => i !== index)
+      
       return {
         ...prev,
         imageFiles: newFiles,
-        imagePreviews: newPreviews
+        imagePreviews: newPreviews,
+        existingImages: newExisting
       }
     })
   }
@@ -212,25 +301,39 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
   const moveImage = (index: number, direction: 'up' | 'down') => {
     setFormData(prev => {
       const newIndex = direction === 'up' ? index - 1 : index + 1
-      if (newIndex < 0 || newIndex >= prev.imageFiles.length) return prev
+      if (newIndex < 0 || newIndex >= prev.imagePreviews.length) return prev
 
-      const newFiles: File[] = [...prev.imageFiles]
       const newPreviews: string[] = [...prev.imagePreviews]
-      
-      // Swap files
-      const tempFile = newFiles[index]
-      newFiles[index] = newFiles[newIndex]
-      newFiles[newIndex] = tempFile
+      const newExisting: string[] = [...prev.existingImages]
       
       // Swap previews
       const tempPreview = newPreviews[index]
       newPreviews[index] = newPreviews[newIndex]
       newPreviews[newIndex] = tempPreview
+      
+      // Swap existing flags
+      const tempExisting = newExisting[index]
+      newExisting[index] = newExisting[newIndex]
+      newExisting[newIndex] = tempExisting
+
+      // For files, we need to be more careful since not all previews have files
+      const existingCount = prev.existingImages.length
+      const newFiles: File[] = [...prev.imageFiles]
+      
+      // Only swap files if both indices are for new files
+      if (index >= existingCount && newIndex >= existingCount) {
+        const fileIndex1 = index - existingCount
+        const fileIndex2 = newIndex - existingCount
+        const tempFile = newFiles[fileIndex1]
+        newFiles[fileIndex1] = newFiles[fileIndex2]
+        newFiles[fileIndex2] = tempFile
+      }
 
       return {
         ...prev,
         imageFiles: newFiles,
-        imagePreviews: newPreviews
+        imagePreviews: newPreviews,
+        existingImages: newExisting
       }
     })
   }
@@ -250,7 +353,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
       case 3:
         return formData.description.trim() !== ''
       case 4:
-        return formData.imageFiles.length > 0
+        return formData.imagePreviews.length > 0 // Allow existing images when editing
       default:
         return true
     }
@@ -374,6 +477,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         applicationLink: '',
         imageFiles: [],
         imagePreviews: [],
+        existingImages: [],
       })
       onOpenChange(false)
     } catch (error: any) {
@@ -400,7 +504,9 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
       <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col z-50 mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Add New House</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {editingHouse ? 'Edit House' : 'Add New House'}
+          </h2>
           <button
             onClick={() => {
               // Don't clear localStorage when closing - user might come back
@@ -785,7 +891,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
                 )}
 
                 {/* Upload Button */}
-                {formData.imageFiles.length < 5 && (
+                {formData.imagePreviews.length < 5 && (
                   <div>
                     <input
                       type="file"
@@ -865,7 +971,9 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
               disabled={isSubmitting}
               className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? 'Publishing...' : 'Publish House'}
+              {isSubmitting 
+                ? (editingHouse ? 'Updating...' : 'Publishing...') 
+                : (editingHouse ? 'Update House' : 'Publish House')}
             </button>
           )}
         </div>
