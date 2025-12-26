@@ -193,7 +193,7 @@ function HouseDetailPage() {
     }
 
     fetchHouse()
-  }, [id])
+  }, [slug])
 
   if (loading) {
     return (
