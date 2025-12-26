@@ -402,17 +402,31 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
 
       // Combine existing images with newly uploaded ones
       // Maintain the order from imagePreviews
-      const finalImageUrls = formData.imagePreviews.map(preview => {
-        // If it's an existing image (URL), keep it
+      const finalImageUrls: string[] = []
+      
+      // Track which new image URLs we've used
+      let newImageUrlIndex = 0
+      
+      for (let i = 0; i < formData.imagePreviews.length; i++) {
+        const preview = formData.imagePreviews[i]
+        
+        // If it's an existing image (already an HTTP URL), keep it
         if (formData.existingImages.includes(preview)) {
-          return preview
+          finalImageUrls.push(preview)
+        } 
+        // Otherwise, it's a new upload (blob URL) - use the corresponding uploaded URL
+        else if (preview.startsWith('blob:')) {
+          if (newImageUrlIndex < newImageUrls.length) {
+            finalImageUrls.push(newImageUrls[newImageUrlIndex])
+            newImageUrlIndex++
+          }
+          // If upload failed for this file, skip it (error already logged)
         }
-        // Otherwise, it's a new upload - find the corresponding URL
-        const previewIndex = formData.imagePreviews.indexOf(preview)
-        const existingBeforeIndex = formData.existingImages.filter((_, i) => i < previewIndex).length
-        const fileIndex = previewIndex - existingBeforeIndex
-        return newImageUrls[fileIndex] || preview
-      }).filter(url => url && url.startsWith('http')) // Only keep valid HTTP URLs (not blob URLs)
+        // If it's already an HTTP URL but not in existingImages, keep it (edge case)
+        else if (preview.startsWith('http')) {
+          finalImageUrls.push(preview)
+        }
+      }
 
       if (finalImageUrls.length === 0) {
         throw new Error('At least one image is required')
