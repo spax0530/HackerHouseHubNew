@@ -41,19 +41,43 @@ WITH CHECK (
 );
 
 -- Allow users to update their own house images
+-- Ownership is verified by checking if the file path starts with the user's UUID
 CREATE POLICY IF NOT EXISTS "Users can update own house images"
 ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'house-images' AND
-  auth.role() = 'authenticated'
+  auth.role() = 'authenticated' AND
+  (
+    -- User owns the image if path starts with their UUID
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR
+    -- Admins can update any image
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  )
 );
 
 -- Allow users to delete their own house images
+-- Ownership is verified by checking if the file path starts with the user's UUID
 CREATE POLICY IF NOT EXISTS "Users can delete own house images"
 ON storage.objects FOR DELETE
 USING (
   bucket_id = 'house-images' AND
-  auth.role() = 'authenticated'
+  auth.role() = 'authenticated' AND
+  (
+    -- User owns the image if path starts with their UUID
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR
+    -- Admins can delete any image
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role = 'admin'
+    )
+  )
 );
 
 -- Storage policies for avatars bucket

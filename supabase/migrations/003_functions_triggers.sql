@@ -29,6 +29,39 @@ CREATE TRIGGER update_applications_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- FUNCTION: Prevent non-admins from updating role field
+-- ============================================
+CREATE OR REPLACE FUNCTION prevent_role_self_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If role is being changed, check if user has permission
+  -- RLS policies ensure users can only update their own profile (unless admin)
+  -- This trigger prevents non-admins from changing the role field
+  IF OLD.role IS DISTINCT FROM NEW.role THEN
+    -- Check if the user is an admin (admins can change any role)
+    IF NOT EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid()
+      AND role = 'admin'
+    ) THEN
+      -- User is not an admin - revert role to old value
+      -- This prevents privilege escalation
+      NEW.role := OLD.role;
+    END IF;
+    -- If user is admin, allow the role change (do nothing)
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to prevent role self-updates
+DROP TRIGGER IF EXISTS prevent_role_self_update_trigger ON profiles;
+CREATE TRIGGER prevent_role_self_update_trigger
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_role_self_update();
+
+-- ============================================
 -- FUNCTION: Auto-create profile on user signup
 -- ============================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()

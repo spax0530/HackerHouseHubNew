@@ -11,10 +11,11 @@ ALTER TABLE saved_houses ENABLE ROW LEVEL SECURITY;
 -- PROFILES POLICIES
 -- ============================================
 
--- Anyone can read profiles (for displaying host info, etc.)
-CREATE POLICY IF NOT EXISTS "Profiles are viewable by everyone"
+-- Authenticated users can read profiles (for displaying host info, etc.)
+-- Restricted to authenticated users to prevent email enumeration and protect privacy
+CREATE POLICY IF NOT EXISTS "Authenticated users can view profiles"
 ON profiles FOR SELECT
-USING (true);
+USING (auth.role() = 'authenticated');
 
 -- Users can update their own profile
 CREATE POLICY IF NOT EXISTS "Users can update own profile"

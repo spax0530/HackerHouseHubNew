@@ -19,7 +19,16 @@ function FeaturedHousesSection() {
         .order('created_at', { ascending: false })
         .limit(6)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching featured houses:', error)
+        throw error
+      }
+
+      // Debug logging
+      console.log('Featured houses fetched:', data?.length || 0, 'houses')
+      if (data && data.length > 0) {
+        console.log('House names:', data.map(h => h.name))
+      }
 
       if (data) {
         const formatted = data.map((h: House) => ({
@@ -36,6 +45,16 @@ function FeaturedHousesSection() {
           image: h.images?.[0] || '', // Use first image
         }))
         setFeaturedHouses(formatted)
+      } else {
+        // No houses found - check if there are any houses at all
+        const { data: allHouses } = await supabase
+          .from('houses')
+          .select('id, name, admin_status')
+          .limit(10)
+        console.log('All houses in database (first 10):', allHouses)
+        if (allHouses && allHouses.length > 0) {
+          console.log('House statuses:', allHouses.map(h => ({ name: h.name, status: h.admin_status })))
+        }
       }
     } catch (error) {
       console.error('Error fetching featured houses:', error)
