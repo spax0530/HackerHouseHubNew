@@ -380,6 +380,11 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     setIsSubmitting(true)
 
     try {
+      // Check if we have any images at all before proceeding
+      if (formData.imagePreviews.length === 0) {
+        throw new Error('At least one image is required')
+      }
+
       // Upload new images (only files that need uploading)
       const uploadResults = await Promise.allSettled(
         formData.imageFiles.map(file => uploadHouseImage(file, undefined, user.id))
@@ -419,20 +424,41 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
           if (newImageUrlIndex < newImageUrls.length) {
             finalImageUrls.push(newImageUrls[newImageUrlIndex])
             newImageUrlIndex++
+          } else {
+            // Upload failed for this file - show error
+            console.error(`Upload failed for image at index ${i}`)
           }
-          // If upload failed for this file, skip it (error already logged)
         }
-        // If it's already an HTTP URL but not in existingImages, keep it (edge case)
+        // If it's already an HTTP URL but not in existingImages, keep it (might be from a previous edit)
         else if (preview.startsWith('http')) {
           finalImageUrls.push(preview)
         }
       }
 
+      // Final validation - must have at least one valid image URL
       if (finalImageUrls.length === 0) {
-        throw new Error('At least one image is required')
+        console.error('Image mapping debug:', {
+          imagePreviews: formData.imagePreviews,
+          existingImages: formData.existingImages,
+          imageFiles: formData.imageFiles.length,
+          newImageUrls: newImageUrls.length,
+          uploadErrors: uploadErrors,
+        })
+        
+        // If we have upload errors, show them
+        if (uploadErrors.length > 0) {
+          throw new Error(`Failed to upload images: ${uploadErrors.join('; ')}. Please try uploading again.`)
+        }
+        
+        // If we have images but they're all blob URLs and no uploads succeeded
+        if (formData.imagePreviews.length > 0 && newImageUrls.length === 0 && formData.imageFiles.length > 0) {
+          throw new Error('Image upload failed. Please try uploading your images again.')
+        }
+        
+        throw new Error('At least one image is required. Please add at least one image before publishing.')
       }
 
-      if (uploadErrors.length > 0 && newImageUrls.length > 0) {
+      if (uploadErrors.length > 0 && finalImageUrls.length > 0) {
         toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
