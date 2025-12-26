@@ -474,7 +474,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
-      const houseData = {
+      const houseData: any = {
         name: formData.name,
         city: formData.city,
         state: formData.state,
@@ -494,7 +494,8 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
       let data, error
 
       if (editingHouse) {
-        // Update existing house
+        // Update existing house - preserve admin_status (don't reset it)
+        // Only update admin_status if it's explicitly being changed (not in this flow)
         const { data: updateData, error: updateError } = await supabase
           .from('houses')
           .update(houseData)
