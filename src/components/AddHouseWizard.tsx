@@ -505,7 +505,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
           .insert({
             ...houseData,
             host_id: user.id,
-            admin_status: 'pending', // New houses need approval
+            admin_status: 'approved', // Auto-approve new houses (change to 'pending' if you want admin review)
           })
           .select()
           .single()
@@ -515,8 +515,8 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
 
         if (error) throw error
 
-        toast.success('House submitted for review', {
-          description: `${formData.name} will be live once approved.`,
+        toast.success('House published successfully', {
+          description: `${formData.name} is now live on the platform!`,
         })
       }
 
