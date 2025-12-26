@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload, ArrowUp, ArrowDown, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import type { HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
@@ -145,6 +145,26 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
     }))
   }
 
+  const [customAmenity, setCustomAmenity] = useState('')
+
+  const addCustomAmenity = () => {
+    const trimmed = customAmenity.trim()
+    if (trimmed && !formData.amenities.includes(trimmed)) {
+      setFormData(prev => ({
+        ...prev,
+        amenities: [...prev.amenities, trimmed],
+      }))
+      setCustomAmenity('')
+    }
+  }
+
+  const removeCustomAmenity = (amenity: string) => {
+    setFormData(prev => ({
+      ...prev,
+      amenities: prev.amenities.filter((a) => a !== amenity),
+    }))
+  }
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files)
@@ -179,6 +199,34 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
     setFormData(prev => {
       const newFiles = prev.imageFiles.filter((_, i) => i !== index)
       const newPreviews = prev.imagePreviews.filter((_, i) => i !== index)
+      // Revoke the removed preview URL
+      URL.revokeObjectURL(prev.imagePreviews[index])
+      return {
+        ...prev,
+        imageFiles: newFiles,
+        imagePreviews: newPreviews
+      }
+    })
+  }
+
+  const moveImage = (index: number, direction: 'up' | 'down') => {
+    setFormData(prev => {
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      if (newIndex < 0 || newIndex >= prev.imageFiles.length) return prev
+
+      const newFiles: File[] = [...prev.imageFiles]
+      const newPreviews: string[] = [...prev.imagePreviews]
+      
+      // Swap files
+      const tempFile = newFiles[index]
+      newFiles[index] = newFiles[newIndex]
+      newFiles[newIndex] = tempFile
+      
+      // Swap previews
+      const tempPreview = newPreviews[index]
+      newPreviews[index] = newPreviews[newIndex]
+      newPreviews[newIndex] = tempPreview
+
       return {
         ...prev,
         imageFiles: newFiles,
@@ -235,12 +283,35 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
       // Simpler: Upload to `house-images/timestamp-filename` (no house ID folder constraint)
       // or `house-images/hostId/filename`. Let's use the helper which handles it.
       
-      // Upload images
-      const uploadPromises = formData.imageFiles.map(file => uploadHouseImage(file))
-      const imageUrls = (await Promise.all(uploadPromises)).filter(url => url !== null) as string[]
+      // Upload images with better error handling
+      const uploadResults = await Promise.allSettled(
+        formData.imageFiles.map(file => uploadHouseImage(file, undefined, user.id))
+      )
+
+      const imageUrls: string[] = []
+      const uploadErrors: string[] = []
+
+      uploadResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          imageUrls.push(result.value)
+        } else {
+          const fileName = formData.imageFiles[index]?.name || `image ${index + 1}`
+          const errorMsg = result.status === 'rejected' 
+            ? result.reason?.message || 'Unknown error'
+            : 'Upload failed'
+          uploadErrors.push(`${fileName}: ${errorMsg}`)
+        }
+      })
 
       if (imageUrls.length === 0 && formData.imageFiles.length > 0) {
-          throw new Error('Failed to upload images')
+        const errorMessage = uploadErrors.length > 0
+          ? `Failed to upload images:\n${uploadErrors.join('\n')}`
+          : 'Failed to upload images. Please check your internet connection and try again.'
+        throw new Error(errorMessage)
+      }
+
+      if (uploadErrors.length > 0 && imageUrls.length > 0) {
+        toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
       const houseData = {
@@ -544,7 +615,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Amenities
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-4">
                   {availableAmenities.map((amenity) => (
                     <label
                       key={amenity}
@@ -560,6 +631,65 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
                     </label>
                   ))}
                 </div>
+                
+                {/* Custom Amenities */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Add Custom Amenity
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customAmenity}
+                      onChange={(e) => setCustomAmenity(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addCustomAmenity()
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Swimming pool, Game room, etc."
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomAmenity}
+                      disabled={!customAmenity.trim()}
+                      className="px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={18} />
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Selected Custom Amenities */}
+                {formData.amenities.filter(a => !availableAmenities.includes(a)).length > 0 && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Custom Amenities
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.amenities
+                        .filter(a => !availableAmenities.includes(a))
+                        .map((amenity) => (
+                          <span
+                            key={amenity}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm"
+                          >
+                            {amenity}
+                            <button
+                              type="button"
+                              onClick={() => removeCustomAmenity(amenity)}
+                              className="hover:text-blue-900 dark:hover:text-blue-100"
+                            >
+                              <X size={14} />
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -595,24 +725,62 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
                   Images (Max 5) <span className="text-red-500">*</span>
                 </label>
                 
-                {/* Image Previews */}
+                {/* Image Previews with Reordering */}
                 {formData.imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                  <div className="space-y-3 mb-4">
                     {formData.imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative aspect-video rounded-lg overflow-hidden group">
-                        <img 
-                          src={preview} 
-                          alt={`Preview ${index + 1}`} 
-                          className="w-full h-full object-cover"
-                        />
+                      <div 
+                        key={index} 
+                        className="relative flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 group"
+                      >
+                        {/* Image Preview */}
+                        <div className="relative w-24 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={preview} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded">
+                            {index + 1}
+                          </div>
+                        </div>
+                        
+                        {/* Reorder Buttons */}
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => moveImage(index, 'up')}
+                            disabled={index === 0}
+                            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            title="Move up"
+                          >
+                            <ArrowUp size={16} className="text-gray-600 dark:text-gray-400" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveImage(index, 'down')}
+                            disabled={index === formData.imagePreviews.length - 1}
+                            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            title="Move down"
+                          >
+                            <ArrowDown size={16} className="text-gray-600 dark:text-gray-400" />
+                          </button>
+                        </div>
+
+                        {/* Remove Button */}
                         <button
+                          type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                          className="ml-auto p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                          title="Remove image"
                         >
-                          <X size={14} />
+                          <X size={18} />
                         </button>
                       </div>
                     ))}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Drag images up/down to reorder. The first image will be the main photo.
+                    </p>
                   </div>
                 )}
 
