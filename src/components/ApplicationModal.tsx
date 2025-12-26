@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { submitApplication } from '../lib/applications'
@@ -56,6 +57,7 @@ interface ApplicationData {
 }
 
 function ApplicationModal({ open, onOpenChange, house }: ApplicationModalProps) {
+  const navigate = useNavigate()
   const { user, profile } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -194,12 +196,17 @@ function ApplicationModal({ open, onOpenChange, house }: ApplicationModalProps) 
 
       if (!success) throw error
 
-      toast.success('Application submitted', {
+      toast.success('Application submitted successfully!', {
         description: `We'll notify the host of your interest in ${house.name}.`,
       })
 
       setIsSubmitting(false)
       onOpenChange(false)
+      
+      // Navigate to applications page after a short delay
+      setTimeout(() => {
+        navigate('/applications')
+      }, 1000)
     } catch (error: any) {
       console.error('Error submitting application:', error)
       toast.error('Failed to submit application', {

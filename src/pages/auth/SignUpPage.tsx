@@ -47,13 +47,21 @@ function SignUpPage() {
         return
       }
 
-      toast.success('Account created! Please check your email to verify your account.')
+      // Check if email confirmation is required (this is a best guess - Supabase may have it disabled)
+      const needsEmailConfirmation = true // You can make this dynamic based on your Supabase settings
+      
+      if (needsEmailConfirmation) {
+        toast.success('Account created! Please check your email to verify your account.')
+      } else {
+        toast.success('Account created successfully!')
+      }
       
       // Redirect based on role
       if (role === 'host') {
         navigate('/host/dashboard')
       } else {
-        navigate('/applications')
+        // Redirect builders to search page so they can browse houses
+        navigate('/search')
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred')

@@ -120,6 +120,8 @@ function HouseDetailPage() {
   
   const [house, setHouse] = useState<HouseDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [existingApplication, setExistingApplication] = useState<any | null>(null)
+  const [checkingApplication, setCheckingApplication] = useState(false)
 
   useEffect(() => {
     const fetchHouse = async () => {
@@ -195,6 +197,38 @@ function HouseDetailPage() {
     fetchHouse()
   }, [slug])
 
+  // Check if user has already applied to this house
+  useEffect(() => {
+    const checkExistingApplication = async () => {
+      if (!user || !house || profile?.role !== 'applicant') {
+        setExistingApplication(null)
+        return
+      }
+
+      setCheckingApplication(true)
+      try {
+        const { data, error } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('house_id', house.id)
+          .eq('applicant_id', user.id)
+          .maybeSingle()
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking application:', error)
+        } else {
+          setExistingApplication(data)
+        }
+      } catch (error) {
+        console.error('Error checking application:', error)
+      } finally {
+        setCheckingApplication(false)
+      }
+    }
+
+    checkExistingApplication()
+  }, [user, house, profile])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -224,6 +258,15 @@ function HouseDetailPage() {
     
     if (profile?.role !== 'applicant') {
       toast.error('Only builders can apply to houses. Please sign in as a builder.')
+      return
+    }
+
+    // Check if already applied
+    if (existingApplication) {
+      toast.info('You have already applied to this house', {
+        description: `Status: ${existingApplication.status}. View your application in My Applications.`,
+      })
+      navigate('/applications')
       return
     }
 
@@ -463,12 +506,33 @@ function HouseDetailPage() {
                 </div>
 
                 <div className="space-y-3 mb-6">
-                  <button
-                    onClick={handleApplyNow}
-                    className="w-full px-4 py-3 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
-                  >
-                    Apply Now
-                  </button>
+                  {existingApplication ? (
+                    <div className="w-full px-4 py-3 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
+                      <div className="flex items-center gap-2 justify-center mb-1">
+                        <CheckCircle size={18} className="text-blue-600 dark:text-blue-400" />
+                        <span className="font-medium text-blue-900 dark:text-blue-100">
+                          Application {existingApplication.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
+                        Applied on {new Date(existingApplication.created_at).toLocaleDateString()}
+                      </p>
+                      <button
+                        onClick={() => navigate('/applications')}
+                        className="w-full mt-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        View Application
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleApplyNow}
+                      disabled={checkingApplication}
+                      className="w-full px-4 py-3 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {checkingApplication ? 'Checking...' : 'Apply Now'}
+                    </button>
+                  )}
                   <button
                     onClick={handleContactHost}
                     className="w-full px-4 py-3 rounded-lg border-2 border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
