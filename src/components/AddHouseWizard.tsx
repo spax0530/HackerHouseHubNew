@@ -380,23 +380,17 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     setIsSubmitting(true)
 
     try {
-      // 1. Create house record first to get ID (or we could use a temp ID for storage path, but real ID is better)
-      // Actually, standard practice is to insert first, then upload, then update with URLs 
-      // OR upload to a temp folder then move?
-      // Simpler: Upload to `house-images/timestamp-filename` (no house ID folder constraint)
-      // or `house-images/hostId/filename`. Let's use the helper which handles it.
-      
-      // Upload images with better error handling
+      // Upload new images (only files that need uploading)
       const uploadResults = await Promise.allSettled(
         formData.imageFiles.map(file => uploadHouseImage(file, undefined, user.id))
       )
 
-      const imageUrls: string[] = []
+      const newImageUrls: string[] = []
       const uploadErrors: string[] = []
 
       uploadResults.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value) {
-          imageUrls.push(result.value)
+          newImageUrls.push(result.value)
         } else {
           const fileName = formData.imageFiles[index]?.name || `image ${index + 1}`
           const errorMsg = result.status === 'rejected' 
@@ -406,19 +400,29 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         }
       })
 
-      if (imageUrls.length === 0 && formData.imageFiles.length > 0) {
-        const errorMessage = uploadErrors.length > 0
-          ? `Failed to upload images:\n${uploadErrors.join('\n')}`
-          : 'Failed to upload images. Please check your internet connection and try again.'
-        throw new Error(errorMessage)
+      // Combine existing images with newly uploaded ones
+      // Maintain the order from imagePreviews
+      const finalImageUrls = formData.imagePreviews.map(preview => {
+        // If it's an existing image (URL), keep it
+        if (formData.existingImages.includes(preview)) {
+          return preview
+        }
+        // Otherwise, it's a new upload - find the corresponding URL
+        const previewIndex = formData.imagePreviews.indexOf(preview)
+        const existingBeforeIndex = formData.existingImages.filter((_, i) => i < previewIndex).length
+        const fileIndex = previewIndex - existingBeforeIndex
+        return newImageUrls[fileIndex] || preview
+      }).filter(url => url && url.startsWith('http')) // Only keep valid HTTP URLs (not blob URLs)
+
+      if (finalImageUrls.length === 0) {
+        throw new Error('At least one image is required')
       }
 
-      if (uploadErrors.length > 0 && imageUrls.length > 0) {
+      if (uploadErrors.length > 0 && newImageUrls.length > 0) {
         toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
       const houseData = {
-        host_id: user.id,
         name: formData.name,
         city: formData.city,
         state: formData.state,
@@ -427,29 +431,57 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         duration: formData.duration,
         capacity: formData.capacity,
         status: formData.status,
-        admin_status: 'pending', // Explicitly pending
         description: formData.description,
         highlights: formData.highlights.split('\n').filter((h) => h.trim()),
         amenities: formData.amenities,
-        images: imageUrls,
+        images: finalImageUrls,
         application_link: formData.applicationLink || null,
+        updated_at: new Date().toISOString(),
       }
 
-      // Insert into Supabase
-      const { data, error } = await supabase
-        .from('houses')
-        .insert(houseData)
-        .select()
-        .single()
+      let data, error
 
-      if (error) throw error
+      if (editingHouse) {
+        // Update existing house
+        const { data: updateData, error: updateError } = await supabase
+          .from('houses')
+          .update(houseData)
+          .eq('id', editingHouse.id)
+          .select()
+          .single()
+
+        data = updateData
+        error = updateError
+
+        if (error) throw error
+
+        toast.success('House updated successfully', {
+          description: `${formData.name} has been updated.`,
+        })
+      } else {
+        // Create new house
+        const { data: insertData, error: insertError } = await supabase
+          .from('houses')
+          .insert({
+            ...houseData,
+            host_id: user.id,
+            admin_status: 'pending', // New houses need approval
+          })
+          .select()
+          .single()
+
+        data = insertData
+        error = insertError
+
+        if (error) throw error
+
+        toast.success('House submitted for review', {
+          description: `${formData.name} will be live once approved.`,
+        })
+      }
 
       // Notify parent
       onHouseAdded(data)
-
-      toast.success('House submitted for review', {
-        description: `${formData.name} will be live once approved.`,
-      })
 
       setIsSubmitting(false)
       
