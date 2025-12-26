@@ -33,18 +33,21 @@ $$ LANGUAGE sql SECURITY DEFINER;
 -- ============================================
 
 -- Admins can view all houses (regardless of status)
-CREATE POLICY IF NOT EXISTS "Admins can view all houses"
+DROP POLICY IF EXISTS "Admins can view all houses" ON houses;
+CREATE POLICY "Admins can view all houses"
 ON houses FOR SELECT
 USING (is_admin(auth.uid()));
 
 -- Admins can update any house (including admin_status)
-CREATE POLICY IF NOT EXISTS "Admins can update any house"
+DROP POLICY IF EXISTS "Admins can update any house" ON houses;
+CREATE POLICY "Admins can update any house"
 ON houses FOR UPDATE
 USING (is_admin(auth.uid()))
 WITH CHECK (is_admin(auth.uid()));
 
 -- Admins can delete any house
-CREATE POLICY IF NOT EXISTS "Admins can delete any house"
+DROP POLICY IF EXISTS "Admins can delete any house" ON houses;
+CREATE POLICY "Admins can delete any house"
 ON houses FOR DELETE
 USING (is_admin(auth.uid()));
 
@@ -53,7 +56,8 @@ USING (is_admin(auth.uid()));
 -- ============================================
 
 -- Admins can view all profiles
-CREATE POLICY IF NOT EXISTS "Admins can view all profiles"
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+CREATE POLICY "Admins can view all profiles"
 ON profiles FOR SELECT
 USING (
   is_admin(auth.uid())
@@ -61,18 +65,21 @@ USING (
 );
 
 -- Admins can update any profile (including role)
-CREATE POLICY IF NOT EXISTS "Admins can update any profile"
+DROP POLICY IF EXISTS "Admins can update any profile" ON profiles;
+CREATE POLICY "Admins can update any profile"
 ON profiles FOR UPDATE
 USING (is_admin(auth.uid()))
 WITH CHECK (is_admin(auth.uid()));
 
 -- Admins can insert profiles (for manual user creation if needed)
-CREATE POLICY IF NOT EXISTS "Admins can insert profiles"
+DROP POLICY IF EXISTS "Admins can insert profiles" ON profiles;
+CREATE POLICY "Admins can insert profiles"
 ON profiles FOR INSERT
 WITH CHECK (is_admin(auth.uid()));
 
 -- Admins can delete profiles
-CREATE POLICY IF NOT EXISTS "Admins can delete profiles"
+DROP POLICY IF EXISTS "Admins can delete profiles" ON profiles;
+CREATE POLICY "Admins can delete profiles"
 ON profiles FOR DELETE
 USING (is_admin(auth.uid()));
 
@@ -81,7 +88,8 @@ USING (is_admin(auth.uid()));
 -- ============================================
 
 -- Admins can view all applications
-CREATE POLICY IF NOT EXISTS "Admins can view all applications"
+DROP POLICY IF EXISTS "Admins can view all applications" ON applications;
+CREATE POLICY "Admins can view all applications"
 ON applications FOR SELECT
 USING (
   is_admin(auth.uid())
@@ -94,13 +102,15 @@ USING (
 );
 
 -- Admins can update any application
-CREATE POLICY IF NOT EXISTS "Admins can update any application"
+DROP POLICY IF EXISTS "Admins can update any application" ON applications;
+CREATE POLICY "Admins can update any application"
 ON applications FOR UPDATE
 USING (is_admin(auth.uid()))
 WITH CHECK (is_admin(auth.uid()));
 
 -- Admins can delete any application
-CREATE POLICY IF NOT EXISTS "Admins can delete any application"
+DROP POLICY IF EXISTS "Admins can delete any application" ON applications;
+CREATE POLICY "Admins can delete any application"
 ON applications FOR DELETE
 USING (is_admin(auth.uid()));
 
@@ -109,7 +119,8 @@ USING (is_admin(auth.uid()));
 -- ============================================
 
 -- Admins can view all saved houses
-CREATE POLICY IF NOT EXISTS "Admins can view all saved houses"
+DROP POLICY IF EXISTS "Admins can view all saved houses" ON saved_houses;
+CREATE POLICY "Admins can view all saved houses"
 ON saved_houses FOR SELECT
 USING (
   is_admin(auth.uid())
