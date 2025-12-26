@@ -19,7 +19,7 @@ function CtaSection() {
             List My House
           </Link>
           <Link
-            to="/host/dashboard"
+            to="/how-it-works"
             className="w-full sm:w-auto px-6 md:px-8 py-2.5 md:py-3 rounded-lg border-2 border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-900 dark:hover:bg-gray-100 hover:text-white dark:hover:text-gray-900 transition-colors text-sm md:text-base"
           >
             Learn More

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase, type House } from '../lib/supabase'
 import { uploadHouseImage } from '../lib/storage'
 import { generateSlug } from '../lib/utils'
+import { CityStateAutocomplete } from './CityStateAutocomplete'
 
 interface AddHouseWizardProps {
   open: boolean
@@ -661,31 +662,20 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                   placeholder="AI Innovation House"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    City <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => updateField('city', e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="San Francisco"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) => updateField('state', e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="CA"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  City & State <span className="text-red-500">*</span>
+                </label>
+                <CityStateAutocomplete
+                  value={{ city: formData.city, state: formData.state }}
+                  onChange={(location) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      city: location.city,
+                      state: location.state,
+                    }))
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

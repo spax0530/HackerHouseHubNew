@@ -12,6 +12,7 @@ import HostDashboardPage from './pages/HostDashboardPage'
 import HouseDetailPage from './pages/HouseDetailPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
+import HowItWorksPage from './pages/HowItWorksPage'
 import NotFoundPage from './pages/NotFoundPage'
 import SignInPage from './pages/auth/SignInPage'
 import SignUpPage from './pages/auth/SignUpPage'
@@ -44,6 +45,7 @@ function App() {
               <Route path="/house/:slug" element={<HouseDetailPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
               
               {/* Auth Routes */}
               <Route path="/auth/sign-in" element={<SignInPage />} />

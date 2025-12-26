@@ -35,7 +35,7 @@ function HeroSection() {
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-6">
-            <span className="text-xs font-medium text-blue-400">Join 500+ builders nationwide</span>
+            <span className="text-xs font-medium text-blue-400">Join builders and hosts nationwide</span>
           </div>
 
           {/* Heading */}
@@ -45,7 +45,7 @@ function HeroSection() {
 
           {/* Description */}
           <p className="text-base md:text-lg text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Live with builders. Join a residency. Build together.
+            Live with builders. Join a residency. Build together. Find your next hacker house in top tech cities across America.
           </p>
 
           {/* Hero Search Bar */}
