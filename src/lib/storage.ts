@@ -2,9 +2,9 @@ import { supabase } from './supabase'
 
 export const uploadHouseImage = async (file: File, _houseId?: number, userId?: string): Promise<string | null> => {
   try {
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`)
+    // Validate file size (20MB limit)
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error(`File ${file.name} is too large. Maximum size is 20MB.`)
     }
 
     const fileExt = file.name.split('.').pop()?.toLowerCase()

@@ -1,16 +1,19 @@
 -- Supabase Storage Buckets Setup
 -- Run this in your Supabase SQL Editor to create storage buckets
 
--- Create house-images bucket (public)
+-- Create house-images bucket (public) or update if exists
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'house-images',
   'house-images',
   true,
-  5242880, -- 5MB limit
+  20971520, -- 20MB limit (increased from 5MB)
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  file_size_limit = 20971520,
+  public = true,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
 -- Create avatars bucket (public)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
