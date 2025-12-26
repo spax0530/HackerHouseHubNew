@@ -46,69 +46,68 @@ const availableAmenities = [
 
 const STORAGE_KEY = 'hackerhousehub_house_form_draft'
 
+// Helper function to restore form data from localStorage synchronously
+const restoreFormData = (): { formData: Partial<HouseFormData>; step: number } => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return {
+        formData: {
+          name: parsed.name || '',
+          city: parsed.city || '',
+          state: parsed.state || '',
+          theme: parsed.theme || '',
+          capacity: parsed.capacity || 0,
+          pricePerMonth: parsed.pricePerMonth || 0,
+          duration: parsed.duration || '',
+          status: parsed.status || 'Recruiting Now',
+          description: parsed.description || '',
+          highlights: parsed.highlights || '',
+          amenities: parsed.amenities || [],
+          applicationLink: parsed.applicationLink || '',
+        },
+        step: parsed.currentStep || 1,
+      }
+    }
+  } catch (error) {
+    console.error('Error restoring form data from localStorage:', error)
+  }
+  return {
+    formData: {},
+    step: 1,
+  }
+}
+
 function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProps) {
   const { user } = useAuth()
-  const [currentStep, setCurrentStep] = useState(1)
+  
+  // Restore data synchronously on mount
+  const restored = restoreFormData()
+  const [currentStep, setCurrentStep] = useState(restored.step)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isInitialized, setIsInitialized] = useState(false)
   
   const [formData, setFormData] = useState<HouseFormData>({
-    name: '',
-    city: '',
-    state: '',
-    theme: '',
-    capacity: 0,
-    pricePerMonth: 0,
-    duration: '',
-    status: 'Recruiting Now',
-    description: '',
-    highlights: '',
-    amenities: [],
-    applicationLink: '',
+    name: restored.formData.name || '',
+    city: restored.formData.city || '',
+    state: restored.formData.state || '',
+    theme: (restored.formData.theme as HouseTheme) || '',
+    capacity: restored.formData.capacity || 0,
+    pricePerMonth: restored.formData.pricePerMonth || 0,
+    duration: restored.formData.duration || '',
+    status: (restored.formData.status as 'Recruiting Now' | 'Full' | 'Closed') || 'Recruiting Now',
+    description: restored.formData.description || '',
+    highlights: restored.formData.highlights || '',
+    amenities: restored.formData.amenities || [],
+    applicationLink: restored.formData.applicationLink || '',
     imageFiles: [],
     imagePreviews: [],
   })
 
-  // Restore form data from localStorage on mount or when modal opens
+  // Save form data to localStorage whenever it changes (debounced to avoid excessive writes)
   useEffect(() => {
-    if (open && !isInitialized) {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          // Restore form data (excluding files which can't be stored)
-          setFormData(prev => ({
-            ...prev,
-            name: parsed.name || prev.name,
-            city: parsed.city || prev.city,
-            state: parsed.state || prev.state,
-            theme: parsed.theme || prev.theme,
-            capacity: parsed.capacity || prev.capacity,
-            pricePerMonth: parsed.pricePerMonth || prev.pricePerMonth,
-            duration: parsed.duration || prev.duration,
-            status: parsed.status || prev.status,
-            description: parsed.description || prev.description,
-            highlights: parsed.highlights || prev.highlights,
-            amenities: parsed.amenities || prev.amenities,
-            applicationLink: parsed.applicationLink || prev.applicationLink,
-            // imageFiles and imagePreviews are intentionally not restored
-          }))
-          // Restore current step
-          if (parsed.currentStep) {
-            setCurrentStep(parsed.currentStep)
-          }
-        }
-      } catch (error) {
-        console.error('Error restoring form data from localStorage:', error)
-      }
-      setIsInitialized(true)
-    }
-  }, [open, isInitialized])
-
-  // Save form data to localStorage whenever it changes (only save when modal is open)
-  useEffect(() => {
-    if (open && isInitialized) {
+    if (open) {
       try {
         // Only save serializable data (exclude File objects and blob URLs)
         const dataToSave = {
@@ -131,15 +130,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         console.error('Error saving form data to localStorage:', error)
       }
     }
-  }, [formData, currentStep, open, isInitialized])
-
-  // Clear localStorage when modal is closed (user explicitly closes it)
-  useEffect(() => {
-    if (!open && isInitialized) {
-      // Only clear if user manually closes, not on mount
-      // We'll handle clearing on submit separately
-    }
-  }, [open, isInitialized])
+  }, [formData, currentStep, open])
 
   const updateField = (field: keyof HouseFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -313,8 +304,6 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         imageFiles: [],
         imagePreviews: [],
       })
-      setIsInitialized(false)
-
       onOpenChange(false)
     } catch (error: any) {
       console.error('Error publishing house:', error)
@@ -323,7 +312,10 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
     }
   }
 
-  if (!open) return null
+  // Keep component mounted but hidden to preserve state
+  if (!open) {
+    return null
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
