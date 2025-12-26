@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null
   profile: Profile | null
   loading: boolean
+  isAdmin: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUpBuilder: (email: string, password: string, fullName: string) => Promise<{ error: any }>
   signUpHost: (email: string, password: string, fullName: string) => Promise<{ error: any }>
@@ -214,10 +215,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     toast.success('Signed out successfully')
   }
 
+  // Compute isAdmin based on profile role
+  const isAdmin = profile?.role === 'admin'
+
   const value = {
     user,
     profile,
     loading,
+    isAdmin,
     signIn,
     signUpBuilder,
     signUpHost,

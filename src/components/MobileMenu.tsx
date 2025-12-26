@@ -10,7 +10,7 @@ interface MobileMenuProps {
 
 function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const { favorites } = useAppContext()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, isAdmin } = useAuth()
   
   if (!isOpen) return null
 
@@ -56,6 +56,11 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     // Host features
     if (isHost) {
       links.push({ path: '/host/dashboard', label: 'Host Dashboard' })
+    }
+    
+    // Admin features
+    if (isAdmin) {
+      links.push({ path: '/admin/dashboard', label: 'Admin Portal' })
     }
     
     // Common links
@@ -108,7 +113,7 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                       {profile?.full_name || user.email}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                      {profile?.role === 'host' ? 'Host' : profile?.role === 'applicant' ? 'Builder' : 'User'}
+                      {profile?.role === 'admin' ? 'Admin' : profile?.role === 'host' ? 'Host' : profile?.role === 'applicant' ? 'Builder' : 'User'}
                     </p>
                   </div>
                   <Settings size={16} className="text-gray-400" />

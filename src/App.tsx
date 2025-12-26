@@ -17,6 +17,11 @@ import SignInPage from './pages/auth/SignInPage'
 import SignUpPage from './pages/auth/SignUpPage'
 import ApplicantApplicationsPage from './pages/ApplicantApplicationsPage'
 import ProfilePage from './pages/ProfilePage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminHousesPage from './pages/admin/AdminHousesPage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminApplicationsPage from './pages/admin/AdminApplicationsPage'
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
@@ -66,6 +71,48 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Admin Routes */}
+              <Route 
+                path="/admin/dashboard" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminDashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/houses" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminHousesPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminUsersPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/applications" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminApplicationsPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/analytics" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminAnalyticsPage />
                   </ProtectedRoute>
                 } 
               />

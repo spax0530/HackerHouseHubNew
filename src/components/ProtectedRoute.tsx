@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  allowedRoles?: ('applicant' | 'host')[]
+  allowedRoles?: ('applicant' | 'host' | 'admin')[]
+  requireAdmin?: boolean
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth()
+export function ProtectedRoute({ children, allowedRoles, requireAdmin }: ProtectedRouteProps) {
+  const { user, profile, loading, isAdmin } = useAuth()
   const location = useLocation()
 
   // Add timeout for loading state to prevent infinite loading
@@ -38,12 +39,19 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/auth/sign-in" state={{ from: location }} replace />
   }
 
+  // Check admin requirement
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />
+  }
+
   // If no profile but user exists, allow access (profile might be loading or missing)
   // Only check role if profile exists and allowedRoles is specified
   if (allowedRoles && profile && !allowedRoles.includes(profile.role as any)) {
     // If user has a role but it's not allowed, redirect to their home
     if (profile.role === 'host') {
       return <Navigate to="/host/dashboard" replace />
+    } else if (profile.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />
     } else {
       return <Navigate to="/" replace />
     }

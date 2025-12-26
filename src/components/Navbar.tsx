@@ -7,7 +7,7 @@ import MobileMenu from './MobileMenu'
 
 function Navbar() {
   const { darkMode, toggleDarkMode, favorites } = useAppContext()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, isAdmin } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -114,6 +114,21 @@ function Navbar() {
                       }
                     >
                       Host Dashboard
+                    </NavLink>
+                  )}
+
+                  {isAdmin && (
+                    <NavLink
+                      to="/admin/dashboard"
+                      className={({ isActive }) =>
+                        `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-900'
+                        }`
+                      }
+                    >
+                      Admin
                     </NavLink>
                   )}
                 </>

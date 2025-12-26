@@ -27,7 +27,7 @@ export interface Profile {
   id: string
   email: string | null
   full_name: string | null
-  role: 'applicant' | 'host' | null
+  role: 'applicant' | 'host' | 'admin' | null
   avatar_url: string | null
   bio: string | null
   linkedin_url: string | null
