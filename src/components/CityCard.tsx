@@ -22,7 +22,9 @@ function CityCard({ city, count, image }: CityCardProps) {
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6 text-white">
         <h3 className="text-xl md:text-2xl font-semibold mb-1">{city}</h3>
-        <p className="text-xs md:text-sm text-gray-200">{count} houses</p>
+        <p className="text-xs md:text-sm text-gray-200">
+          {count === 0 ? 'Coming soon' : count === 1 ? '1 house' : `${count} houses`}
+        </p>
       </div>
     </Link>
   )

@@ -5,7 +5,7 @@ function TrustedBy() {
   const metrics = [
     { value: '500+', label: 'Active Builders' },
     { value: '50+', label: 'Hacker Houses' },
-    { value: '$100M+', label: 'Raised by Alumni' },
+    { value: '100+', label: 'Successful Placements' },
   ]
 
   return (
