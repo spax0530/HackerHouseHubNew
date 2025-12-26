@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Mail, Send } from 'lucide-react'
+import { Mail, Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { supabase } from '../lib/supabase'
 
 function ContactPage() {
   const [formData, setFormData] = useState({
@@ -9,19 +10,41 @@ function ContactPage() {
     userType: '',
     message: '',
   })
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Contact form submitted:', formData)
-    toast.success('Thanks for reaching out!', {
-      description: "We'll get back to you soon.",
-    })
-    setFormData({
-      name: '',
-      email: '',
-      userType: '',
-      message: '',
-    })
+    setSubmitting(true)
+
+    try {
+      const { error } = await supabase
+        .from('contact_submissions')
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          user_type: formData.userType || null,
+          message: formData.message,
+        })
+
+      if (error) throw error
+
+      toast.success('Thanks for reaching out!', {
+        description: "We'll get back to you soon.",
+      })
+      setFormData({
+        name: '',
+        email: '',
+        userType: '',
+        message: '',
+      })
+    } catch (error: any) {
+      console.error('Error submitting contact form:', error)
+      toast.error('Failed to send message', {
+        description: error.message || 'Please try again later.',
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -119,10 +142,20 @@ function ContactPage() {
 
             <button
               type="submit"
-              className="w-full px-6 py-3 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              disabled={submitting}
+              className="w-full px-6 py-3 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send size={18} />
-              Send Message
+              {submitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send size={18} />
+                  Send Message
+                </>
+              )}
             </button>
           </form>
         </div>

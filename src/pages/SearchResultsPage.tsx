@@ -67,24 +67,25 @@ function SearchResultsPage() {
       if (error) throw error
 
       if (data) {
-        const formatted = data.map((h: House) => ({
-          id: h.id,
-          name: h.name,
-          city: h.city,
-          state: h.state,
-          theme: h.theme as HouseTheme,
-          price: `$${h.price_per_month}/mo`,
-          pricePerMonth: h.price_per_month,
-          duration: h.duration,
-          // Map duration string to simple value if needed for legacy filters
-          // e.g. "3-6 months" -> "3-6"
-          durationValue: h.duration.replace(' months', '').replace(' month', '').replace('+', '').replace('–', '-').trim(),
-          capacity: h.capacity,
-          status: h.status,
-          image: h.images?.[0] || '', 
-          images: h.images || [],
-          // Add other fields if needed by HouseCard or filters
-        }))
+          const formatted = data.map((h: House) => ({
+            id: h.id,
+            slug: h.slug, // SEO-friendly slug
+            name: h.name,
+            city: h.city,
+            state: h.state,
+            theme: h.theme as HouseTheme,
+            price: `$${h.price_per_month}/mo`,
+            pricePerMonth: h.price_per_month,
+            duration: h.duration,
+            // Map duration string to simple value if needed for legacy filters
+            // e.g. "3-6 months" -> "3-6"
+            durationValue: h.duration.replace(' months', '').replace(' month', '').replace('+', '').replace('–', '-').trim(),
+            capacity: h.capacity,
+            status: h.status,
+            image: h.images?.[0] || '', 
+            images: h.images || [],
+            // Add other fields if needed by HouseCard or filters
+          }))
         setHouses(formatted)
       }
     } catch (error) {

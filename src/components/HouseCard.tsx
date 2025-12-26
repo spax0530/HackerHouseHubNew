@@ -4,6 +4,7 @@ import { useAppContext, type HouseTheme } from '../context/AppContext'
 
 interface HouseCardProps {
   id: number
+  slug?: string | null // SEO-friendly URL slug
   image: string
   name: string
   city: string
@@ -27,6 +28,7 @@ const themeColors: Record<HouseTheme, string> = {
 
 function HouseCard({
   id,
+  slug,
   image,
   name,
   city,
@@ -88,7 +90,8 @@ function HouseCard({
     if (onViewDetails) {
       onViewDetails()
     } else {
-      navigate(`/house/${id}`)
+      // Use slug for SEO-friendly URLs, fallback to ID for backwards compatibility
+      navigate(`/house/${slug || id}`)
     }
   }
 

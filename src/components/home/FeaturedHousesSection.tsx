@@ -33,6 +33,7 @@ function FeaturedHousesSection() {
       if (data) {
         const formatted = data.map((h: House) => ({
           id: h.id,
+          slug: h.slug, // SEO-friendly slug
           name: h.name,
           city: h.city,
           state: h.state,

@@ -5,6 +5,7 @@ import type { HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase, type House } from '../lib/supabase'
 import { uploadHouseImage } from '../lib/storage'
+import { generateSlug } from '../lib/utils'
 
 interface AddHouseWizardProps {
   open: boolean
@@ -474,8 +475,12 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
+      // Generate SEO-friendly slug
+      const slug = generateSlug(`${formData.name}-${formData.city}-${formData.state}`)
+
       const houseData: any = {
         name: formData.name,
+        slug: slug, // SEO-friendly URL slug
         city: formData.city,
         state: formData.state,
         theme: formData.theme,

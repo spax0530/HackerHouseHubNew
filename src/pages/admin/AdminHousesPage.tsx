@@ -237,7 +237,7 @@ function AdminHousesPage() {
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                       <button
-                        onClick={() => navigate(`/house/${house.id}`)}
+                        onClick={() => navigate(`/house/${house.slug || house.id}`)}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
                       >
                         <Eye size={16} />

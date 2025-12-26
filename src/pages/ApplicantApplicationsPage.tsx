@@ -27,6 +27,7 @@ function ApplicantApplicationsPage() {
           *,
           house:houses (
             id,
+            slug,
             name,
             city,
             state,
@@ -140,7 +141,7 @@ function ApplicantApplicationsPage() {
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div>
                         <Link
-                          to={`/house/${application.house_id}`}
+                          to={`/house/${application.house?.slug || application.house_id}`}
                           className="text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         >
                           {application.house?.name || 'Unknown House'}

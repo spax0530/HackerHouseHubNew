@@ -41,6 +41,7 @@ export interface House {
   id: number
   host_id: string
   name: string
+  slug: string | null // SEO-friendly URL slug
   city: string
   state: string
   theme: string

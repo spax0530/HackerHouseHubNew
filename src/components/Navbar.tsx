@@ -189,7 +189,7 @@ function Navbar() {
                     </Link>
                   )}
 
-                  {/* User Info / Profile Link */}
+                  {/* User Info / Profile Link with Role Badge */}
                   <Link 
                     to="/profile"
                     className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -199,7 +199,20 @@ function Navbar() {
                     ) : (
                         <User size={16} />
                     )}
-                    <span className="font-medium max-w-[100px] truncate">{profile?.full_name || user.email?.split('@')[0]}</span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium max-w-[100px] truncate">{profile?.full_name || user.email?.split('@')[0]}</span>
+                      {profile?.role && (
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          profile.role === 'host' 
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : profile.role === 'admin'
+                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                        }`}>
+                          {profile.role === 'host' ? 'Host' : profile.role === 'admin' ? 'Admin' : 'Builder'}
+                        </span>
+                      )}
+                    </div>
                   </Link>
                   
                   {/* Sign Out */}

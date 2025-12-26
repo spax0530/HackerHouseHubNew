@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   MapPin,
-  Star,
   Wifi,
   UtensilsCrossed,
   Car,
@@ -37,14 +36,7 @@ interface Resident {
   twitter?: string
 }
 
-interface Review {
-  id: number
-  name: string
-  rating: number
-  date: string
-  text: string
-  avatar?: string
-}
+// Reviews feature removed
 
 interface Host {
   name: string
@@ -77,6 +69,7 @@ interface SimilarHouse {
 
 interface HouseDetail {
   id: number
+  slug?: string | null // SEO-friendly URL slug
   name: string
   city: string
   state: string
@@ -92,12 +85,9 @@ interface HouseDetail {
   customQuestions?: string[]
   applicationLink?: string
   residents: Resident[]
-  reviews: Review[]
   host: Host
   location: Location
   similarHouses: SimilarHouse[]
-  rating: number
-  reviewCount: number
 }
 
 const themeColors: Record<HouseTheme, string> = {
@@ -122,7 +112,7 @@ const amenityIcons: Record<string, LucideIcon> = {
 }
 
 function HouseDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { showApplicationModal, setShowApplicationModal, selectedHouse, setSelectedHouse } = useAppContext()
   const { user, profile } = useAuth()
@@ -133,16 +123,26 @@ function HouseDetailPage() {
 
   useEffect(() => {
     const fetchHouse = async () => {
-      if (!id) return
+      if (!slug) return
       
       try {
         setLoading(true)
-        const { data, error } = await supabase
+        // Try to fetch by slug first (SEO-friendly), fallback to ID for backwards compatibility
+        const isNumeric = /^\d+$/.test(slug)
+        let query = supabase
           .from('houses')
-          .select('*, host:profiles(full_name, avatar_url, bio)') // Use join if host_id is linked to profiles
-          .eq('id', id)
+          .select('*, host:profiles(full_name, avatar_url, bio)')
           .eq('admin_status', 'approved') // Only show approved houses
-          .single()
+        
+        if (isNumeric) {
+          // Backwards compatibility: if slug is numeric, treat as ID
+          query = query.eq('id', parseInt(slug))
+        } else {
+          // SEO-friendly: use slug
+          query = query.eq('slug', slug)
+        }
+        
+        const { data, error } = await query.single()
 
         if (error) throw error
 
@@ -151,6 +151,7 @@ function HouseDetailPage() {
           // Mock data for things we don't have yet (residents, reviews, precise location)
           const detail: HouseDetail = {
             id: data.id,
+            slug: data.slug || null,
             name: data.name,
             city: data.city,
             state: data.state,
@@ -164,9 +165,7 @@ function HouseDetailPage() {
             amenities: data.amenities || [],
             highlights: data.highlights || [],
             applicationLink: data.application_link || undefined,
-            // Mocked/Placeholder data
             residents: [],
-            reviews: [],
             host: {
               name: data.host?.full_name || 'Host',
               avatar: data.host?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
@@ -182,8 +181,6 @@ function HouseDetailPage() {
               neighborhood: data.city,
             },
             similarHouses: [],
-            rating: 0,
-            reviewCount: 0,
           }
           setHouse(detail)
         }
@@ -221,7 +218,7 @@ function HouseDetailPage() {
     // Check if user is authenticated and is an applicant
     if (!user) {
       toast.error('Create a builder account to apply')
-      navigate('/auth/sign-in', { state: { from: `/house/${house.id}` } })
+      navigate('/auth/sign-in', { state: { from: `/house/${house.slug || house.id}` } })
       return
     }
     
@@ -275,9 +272,7 @@ function HouseDetailPage() {
     return CheckCircle
   }
 
-  const averageRating = house.reviews.length > 0
-    ? house.reviews.reduce((sum, r) => sum + r.rating, 0) / house.reviews.length
-    : house.rating
+  // Reviews feature removed
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
@@ -312,13 +307,6 @@ function HouseDetailPage() {
                 >
                   {house.theme}
                 </span>
-                <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                  <Star size={18} className="fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium">{averageRating.toFixed(1)}</span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    · {house.reviewCount} reviews
-                  </span>
-                </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
                     house.status === 'Recruiting Now'
@@ -431,79 +419,7 @@ function HouseDetailPage() {
               </p>
             </section>
 
-            {/* Reviews */}
-            <section className="py-6 md:py-8 border-b border-gray-200 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Reviews
-                </h2>
-                <div className="flex items-center gap-2">
-                  <Star size={20} className="fill-yellow-400 text-yellow-400" />
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {averageRating.toFixed(1)}
-                  </span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    ({house.reviewCount} reviews)
-                  </span>
-                </div>
-              </div>
-
-              {!house.reviews || house.reviews.length === 0 ? (
-                <EmptyState
-                  title="Reviews coming soon"
-                  description="We're still building reviews into the product. For now, use the house description and host details to decide if it's a fit."
-                />
-              ) : (
-                <div className="space-y-6">
-                  {house.reviews.map((review) => (
-                    <div
-                      key={review.id}
-                      className="p-4 md:p-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900"
-                    >
-                      <div className="flex items-start gap-4 mb-3">
-                        {review.avatar ? (
-                          <img
-                            src={review.avatar}
-                            alt={review.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {review.name[0]}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                              {review.name}
-                            </h4>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star
-                                  key={i}
-                                  size={14}
-                                  className={
-                                    i < review.rating
-                                      ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-gray-300 dark:text-gray-700'
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{review.date}</p>
-                        </div>
-                      </div>
-                      <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {review.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            {/* Reviews section removed */}
 
             {/* Similar Houses */}
             {house.similarHouses && house.similarHouses.length > 0 ? (
