@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import type { HouseTheme } from '../context/AppContext'
@@ -44,11 +44,14 @@ const availableAmenities = [
   'Rooftop terrace',
 ]
 
+const STORAGE_KEY = 'hackerhousehub_house_form_draft'
+
 function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProps) {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
   
   const [formData, setFormData] = useState<HouseFormData>({
     name: '',
@@ -66,6 +69,77 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
     imageFiles: [],
     imagePreviews: [],
   })
+
+  // Restore form data from localStorage on mount or when modal opens
+  useEffect(() => {
+    if (open && !isInitialized) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          // Restore form data (excluding files which can't be stored)
+          setFormData(prev => ({
+            ...prev,
+            name: parsed.name || prev.name,
+            city: parsed.city || prev.city,
+            state: parsed.state || prev.state,
+            theme: parsed.theme || prev.theme,
+            capacity: parsed.capacity || prev.capacity,
+            pricePerMonth: parsed.pricePerMonth || prev.pricePerMonth,
+            duration: parsed.duration || prev.duration,
+            status: parsed.status || prev.status,
+            description: parsed.description || prev.description,
+            highlights: parsed.highlights || prev.highlights,
+            amenities: parsed.amenities || prev.amenities,
+            applicationLink: parsed.applicationLink || prev.applicationLink,
+            // imageFiles and imagePreviews are intentionally not restored
+          }))
+          // Restore current step
+          if (parsed.currentStep) {
+            setCurrentStep(parsed.currentStep)
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring form data from localStorage:', error)
+      }
+      setIsInitialized(true)
+    }
+  }, [open, isInitialized])
+
+  // Save form data to localStorage whenever it changes (only save when modal is open)
+  useEffect(() => {
+    if (open && isInitialized) {
+      try {
+        // Only save serializable data (exclude File objects and blob URLs)
+        const dataToSave = {
+          name: formData.name,
+          city: formData.city,
+          state: formData.state,
+          theme: formData.theme,
+          capacity: formData.capacity,
+          pricePerMonth: formData.pricePerMonth,
+          duration: formData.duration,
+          status: formData.status,
+          description: formData.description,
+          highlights: formData.highlights,
+          amenities: formData.amenities,
+          applicationLink: formData.applicationLink,
+          currentStep: currentStep,
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
+      } catch (error) {
+        console.error('Error saving form data to localStorage:', error)
+      }
+    }
+  }, [formData, currentStep, open, isInitialized])
+
+  // Clear localStorage when modal is closed (user explicitly closes it)
+  useEffect(() => {
+    if (!open && isInitialized) {
+      // Only clear if user manually closes, not on mount
+      // We'll handle clearing on submit separately
+    }
+  }, [open, isInitialized])
 
   const updateField = (field: keyof HouseFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -213,7 +287,13 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
       })
 
       setIsSubmitting(false)
-      onOpenChange(false)
+      
+      // Clear localStorage on successful submission
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch (error) {
+        console.error('Error clearing localStorage:', error)
+      }
 
       // Reset form
       setCurrentStep(1)
@@ -233,6 +313,9 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         imageFiles: [],
         imagePreviews: [],
       })
+      setIsInitialized(false)
+
+      onOpenChange(false)
     } catch (error: any) {
       console.error('Error publishing house:', error)
       toast.error(error.message || 'Failed to publish house')
@@ -256,7 +339,10 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded }: AddHouseWizardProp
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Add New House</h2>
           <button
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              // Don't clear localStorage when closing - user might come back
+              onOpenChange(false)
+            }}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
             aria-label="Close"
           >
