@@ -8,43 +8,75 @@ function FeaturedHousesSection() {
   const [featuredHouses, setFeaturedHouses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  const fetchFeaturedHouses = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('houses')
+        .select('*')
+        //.eq('featured', true) // Or just order by newest for now if featured flag isn't set
+        .eq('admin_status', 'approved') // Only show approved houses
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      if (error) throw error
+
+      if (data) {
+        const formatted = data.map((h: House) => ({
+          id: h.id,
+          name: h.name,
+          city: h.city,
+          state: h.state,
+          theme: h.theme as any,
+          price: `$${h.price_per_month}/mo`,
+          pricePerMonth: h.price_per_month, // For sorting/logic if needed
+          duration: h.duration,
+          capacity: h.capacity,
+          status: h.status,
+          image: h.images?.[0] || '', // Use first image
+        }))
+        setFeaturedHouses(formatted)
+      }
+    } catch (error) {
+      console.error('Error fetching featured houses:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const fetchFeaturedHouses = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('houses')
-          .select('*')
-          //.eq('featured', true) // Or just order by newest for now if featured flag isn't set
-          .eq('admin_status', 'approved') // Only show approved houses
-          .order('created_at', { ascending: false })
-          .limit(6)
+    fetchFeaturedHouses()
 
-        if (error) throw error
-
-        if (data) {
-          const formatted = data.map((h: House) => ({
-            id: h.id,
-            name: h.name,
-            city: h.city,
-            state: h.state,
-            theme: h.theme as any,
-            price: `$${h.price_per_month}/mo`,
-            pricePerMonth: h.price_per_month, // For sorting/logic if needed
-            duration: h.duration,
-            capacity: h.capacity,
-            status: h.status,
-            image: h.images?.[0] || '', // Use first image
-          }))
-          setFeaturedHouses(formatted)
+    // Set up real-time subscription for new houses
+    const channel = supabase
+      .channel('houses-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'houses',
+          filter: 'admin_status=eq.approved',
+        },
+        () => {
+          // Refetch when houses change
+          fetchFeaturedHouses()
         }
-      } catch (error) {
-        console.error('Error fetching featured houses:', error)
-      } finally {
-        setLoading(false)
+      )
+      .subscribe()
+
+    // Also refetch when page becomes visible (user comes back to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchFeaturedHouses()
       }
     }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    fetchFeaturedHouses()
+    return () => {
+      channel.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   return (

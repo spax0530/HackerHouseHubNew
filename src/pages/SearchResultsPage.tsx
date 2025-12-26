@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Filter, Grid, Map } from 'lucide-react'
 import SearchBar from '../components/SearchBar'
@@ -56,47 +56,78 @@ function SearchResultsPage() {
   }, [searchParams])
 
   // Fetch houses from Supabase
-  useEffect(() => {
-    const fetchHouses = async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('houses')
-          .select('*')
-          .eq('admin_status', 'approved') // Only show approved houses
-          
-        if (error) throw error
+  const fetchHouses = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('houses')
+        .select('*')
+        .eq('admin_status', 'approved') // Only show approved houses
+        
+      if (error) throw error
 
-        if (data) {
-          const formatted = data.map((h: House) => ({
-            id: h.id,
-            name: h.name,
-            city: h.city,
-            state: h.state,
-            theme: h.theme as HouseTheme,
-            price: `$${h.price_per_month}/mo`,
-            pricePerMonth: h.price_per_month,
-            duration: h.duration,
-            // Map duration string to simple value if needed for legacy filters
-            // e.g. "3-6 months" -> "3-6"
-            durationValue: h.duration.replace(' months', '').replace(' month', '').replace('+', '').replace('–', '-').trim(),
-            capacity: h.capacity,
-            status: h.status,
-            image: h.images?.[0] || '', 
-            images: h.images || [],
-            // Add other fields if needed by HouseCard or filters
-          }))
-          setHouses(formatted)
+      if (data) {
+        const formatted = data.map((h: House) => ({
+          id: h.id,
+          name: h.name,
+          city: h.city,
+          state: h.state,
+          theme: h.theme as HouseTheme,
+          price: `$${h.price_per_month}/mo`,
+          pricePerMonth: h.price_per_month,
+          duration: h.duration,
+          // Map duration string to simple value if needed for legacy filters
+          // e.g. "3-6 months" -> "3-6"
+          durationValue: h.duration.replace(' months', '').replace(' month', '').replace('+', '').replace('–', '-').trim(),
+          capacity: h.capacity,
+          status: h.status,
+          image: h.images?.[0] || '', 
+          images: h.images || [],
+          // Add other fields if needed by HouseCard or filters
+        }))
+        setHouses(formatted)
+      }
+    } catch (error) {
+      console.error('Error fetching houses:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchHouses()
+
+    // Set up real-time subscription for new houses
+    const channel = supabase
+      .channel('search-houses-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'houses',
+          filter: 'admin_status=eq.approved',
+        },
+        () => {
+          // Refetch when houses change
+          fetchHouses()
         }
-      } catch (error) {
-        console.error('Error fetching houses:', error)
-      } finally {
-        setLoading(false)
+      )
+      .subscribe()
+
+    // Also refetch when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchHouses()
       }
     }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    fetchHouses()
-  }, [])
+    return () => {
+      channel.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchHouses])
 
   // Filter logic
   const filteredHouses = useMemo(() => {

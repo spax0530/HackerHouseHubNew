@@ -141,6 +141,7 @@ function HouseDetailPage() {
           .from('houses')
           .select('*, host:profiles(full_name, avatar_url, bio)') // Use join if host_id is linked to profiles
           .eq('id', id)
+          .eq('admin_status', 'approved') // Only show approved houses
           .single()
 
         if (error) throw error
