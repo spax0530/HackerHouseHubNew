@@ -49,7 +49,7 @@ const availableAmenities = [
 const STORAGE_KEY = 'hackerhousehub_house_form_draft'
 
 // Helper function to restore form data from localStorage synchronously
-const restoreFormData = (): { formData: Partial<HouseFormData>; step: number } => {
+const restoreFormData = (): { formData: Partial<HouseFormData>; step: number; imagePreviews: string[]; existingImages: string[] } => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
@@ -70,6 +70,8 @@ const restoreFormData = (): { formData: Partial<HouseFormData>; step: number } =
           applicationLink: parsed.applicationLink || '',
         },
         step: parsed.currentStep || 1,
+        imagePreviews: parsed.imagePreviewUrls || [],
+        existingImages: parsed.existingImageUrls || [],
       }
     }
   } catch (error) {
@@ -78,6 +80,8 @@ const restoreFormData = (): { formData: Partial<HouseFormData>; step: number } =
   return {
     formData: {},
     step: 1,
+    imagePreviews: [],
+    existingImages: [],
   }
 }
 
@@ -136,18 +140,18 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     } else if (open && !editingHouse) {
       // When opening for new house, restore from localStorage if available
       const saved = restoreFormData()
-      if (saved.formData.name || saved.formData.city) {
-        // Only restore if there's actual saved data
+      if (saved.formData.name || saved.formData.city || saved.imagePreviews.length > 0) {
+        // Restore if there's any saved data (name, city, or images)
         setFormData(prev => ({
           ...prev,
           ...saved.formData,
-          imageFiles: [],
-          imagePreviews: [],
-          existingImages: [],
+          imageFiles: [], // Files can't be restored, user will need to re-upload
+          imagePreviews: saved.imagePreviews, // Restore image URLs
+          existingImages: saved.existingImages, // Restore existing image tracking
         }))
         setCurrentStep(saved.step)
       } else {
-        // Reset to empty form
+        // Reset to empty form only if no saved data exists
         setFormData({
           name: '',
           city: '',
@@ -171,29 +175,37 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
   }, [open, editingHouse])
 
   // Save form data to localStorage whenever it changes (only for new houses, not edits)
+  // Use a debounced save to avoid excessive writes
   useEffect(() => {
     if (open && !editingHouse) {
-      try {
-        // Only save serializable data (exclude File objects and blob URLs)
-        const dataToSave = {
-          name: formData.name,
-          city: formData.city,
-          state: formData.state,
-          theme: formData.theme,
-          capacity: formData.capacity,
-          pricePerMonth: formData.pricePerMonth,
-          duration: formData.duration,
-          status: formData.status,
-          description: formData.description,
-          highlights: formData.highlights,
-          amenities: formData.amenities,
-          applicationLink: formData.applicationLink,
-          currentStep: currentStep,
+      const timeoutId = setTimeout(() => {
+        try {
+          // Only save serializable data (exclude File objects and blob URLs)
+          const dataToSave = {
+            name: formData.name,
+            city: formData.city,
+            state: formData.state,
+            theme: formData.theme,
+            capacity: formData.capacity,
+            pricePerMonth: formData.pricePerMonth,
+            duration: formData.duration,
+            status: formData.status,
+            description: formData.description,
+            highlights: formData.highlights,
+            amenities: formData.amenities,
+            applicationLink: formData.applicationLink,
+            currentStep: currentStep,
+            // Save image preview URLs (but not File objects)
+            imagePreviewUrls: formData.imagePreviews.filter(url => url.startsWith('http')),
+            existingImageUrls: formData.existingImages,
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
+        } catch (error) {
+          console.error('Error saving form data to localStorage:', error)
         }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
-      } catch (error) {
-        console.error('Error saving form data to localStorage:', error)
-      }
+      }, 300) // Debounce by 300ms
+
+      return () => clearTimeout(timeoutId)
     }
   }, [formData, currentStep, open, editingHouse])
 
