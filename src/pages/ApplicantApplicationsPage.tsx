@@ -1,26 +1,24 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Calendar, MapPin, Building2, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 function ApplicantApplicationsPage() {
   const { user } = useAuth()
+  const location = useLocation()
   const [applications, setApplications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (user) {
-      fetchApplications()
+  const fetchApplications = useCallback(async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
-  }, [user])
 
-  const fetchApplications = async () => {
     try {
+      setLoading(true)
       // Fetch applications with house details
-      // Note: This assumes a foreign key relationship exists in Supabase.
-      // If not, we might need to fetch houses separately.
-      // Assuming 'houses' is the relation name for house_id.
       const { data, error } = await supabase
         .from('applications')
         .select(`
@@ -31,11 +29,11 @@ function ApplicantApplicationsPage() {
             name,
             city,
             state,
-            image:images,
+            images,
             price_per_month
           )
         `)
-        .eq('applicant_id', user!.id)
+        .eq('applicant_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -43,19 +41,71 @@ function ApplicantApplicationsPage() {
       // Transform data to handle image array from house
       const transformed = (data || []).map(app => ({
         ...app,
-        house: {
+        house: app.house ? {
           ...app.house,
-          image: Array.isArray(app.house.image) ? app.house.image[0] : app.house.image
-        }
+          image: Array.isArray(app.house.images) && app.house.images.length > 0 
+            ? app.house.images[0] 
+            : null
+        } : null
       }))
 
       setApplications(transformed)
     } catch (error) {
       console.error('Error fetching applications:', error)
+      setApplications([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    fetchApplications()
+  }, [fetchApplications])
+
+  // Refetch when navigating to this page (e.g., after submitting an application)
+  useEffect(() => {
+    if (location.pathname === '/applications' && user) {
+      fetchApplications()
+    }
+  }, [location.pathname, user, fetchApplications])
+
+  // Set up real-time subscription for applications
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('applicant-applications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+          filter: `applicant_id=eq.${user.id}`,
+        },
+        () => {
+          fetchApplications()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [user, fetchApplications])
+
+  // Refetch when page becomes visible (user might have submitted application in another tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        fetchApplications()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user, fetchApplications])
 
   const getStatusColor = (status: string) => {
     switch (status) {
