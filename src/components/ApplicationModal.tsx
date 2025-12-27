@@ -175,7 +175,9 @@ function ApplicationModal({ open, onOpenChange, house }: ApplicationModalProps) 
     setIsSubmitting(true)
 
     try {
-      const { success, error } = await submitApplication({
+      console.log('Submitting application for user:', user.id, 'house:', house.id)
+      
+      const result = await submitApplication({
         houseId: house.id,
         applicantId: user.id,
         applicantName: formData.fullName,
@@ -194,7 +196,12 @@ function ApplicationModal({ open, onOpenChange, house }: ApplicationModalProps) 
         customAnswers: Object.keys(formData.customAnswers).length > 0 ? formData.customAnswers : undefined,
       })
 
-      if (!success) throw error
+      if (!result.success) {
+        console.error('Application submission failed:', result.error)
+        throw result.error || new Error('Failed to submit application')
+      }
+      
+      console.log('Application submitted successfully:', result.data)
 
       toast.success('Application submitted successfully!', {
         description: `We'll notify the host of your interest in ${house.name}.`,

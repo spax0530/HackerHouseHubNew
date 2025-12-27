@@ -21,7 +21,7 @@ export interface SubmitApplicationParams {
 
 export const submitApplication = async (params: SubmitApplicationParams) => {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('applications')
       .insert({
         house_id: params.houseId,
@@ -42,10 +42,17 @@ export const submitApplication = async (params: SubmitApplicationParams) => {
         custom_answers: params.customAnswers || null,
         status: 'Pending',
       })
+      .select()
+      .single()
 
-    if (error) throw error
-    return { success: true }
-  } catch (error) {
+    if (error) {
+      console.error('Error submitting application:', error)
+      throw error
+    }
+
+    console.log('Application submitted successfully:', data)
+    return { success: true, data }
+  } catch (error: any) {
     console.error('Error submitting application:', error)
     return { success: false, error }
   }

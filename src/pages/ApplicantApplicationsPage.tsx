@@ -18,40 +18,71 @@ function ApplicantApplicationsPage() {
 
     try {
       setLoading(true)
-      // Fetch applications with house details
-      const { data, error } = await supabase
+      console.log('Fetching applications for user:', user.id)
+      
+      // First, try to fetch applications
+      const { data: applicationsData, error: applicationsError } = await supabase
         .from('applications')
-        .select(`
-          *,
-          house:houses (
-            id,
-            slug,
-            name,
-            city,
-            state,
-            images,
-            price_per_month
-          )
-        `)
+        .select('*')
         .eq('applicant_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      
-      // Transform data to handle image array from house
-      const transformed = (data || []).map(app => ({
-        ...app,
-        house: app.house ? {
-          ...app.house,
-          image: Array.isArray(app.house.images) && app.house.images.length > 0 
-            ? app.house.images[0] 
-            : null
-        } : null
-      }))
+      if (applicationsError) {
+        console.error('Error fetching applications:', applicationsError)
+        throw applicationsError
+      }
 
+      console.log('Fetched applications (raw):', applicationsData)
+
+      if (!applicationsData || applicationsData.length === 0) {
+        console.log('No applications found for user:', user.id)
+        setApplications([])
+        return
+      }
+
+      // Now fetch house details for each application
+      const houseIds = [...new Set(applicationsData.map(app => app.house_id))]
+      const { data: housesData, error: housesError } = await supabase
+        .from('houses')
+        .select('id, slug, name, city, state, images, price_per_month')
+        .in('id', houseIds)
+
+      if (housesError) {
+        console.error('Error fetching houses:', housesError)
+        // Continue even if house fetch fails - we'll just show applications without house details
+      }
+
+      console.log('Fetched houses:', housesData)
+
+      // Create a map of house_id -> house
+      const housesMap = new Map(
+        (housesData || []).map(house => [house.id, house])
+      )
+
+      // Combine applications with house data
+      const transformed = applicationsData.map(app => {
+        const house = housesMap.get(app.house_id)
+        return {
+          ...app,
+          house: house ? {
+            ...house,
+            image: Array.isArray(house.images) && house.images.length > 0 
+              ? house.images[0] 
+              : null
+          } : null
+        }
+      })
+
+      console.log('Transformed applications:', transformed)
       setApplications(transformed)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching applications:', error)
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      })
       setApplications([])
     } finally {
       setLoading(false)
