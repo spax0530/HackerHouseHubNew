@@ -476,12 +476,8 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         toast.warning(`Some images failed to upload: ${uploadErrors.join(', ')}`)
       }
 
-      // Generate SEO-friendly slug
-      const slug = generateSlug(`${formData.name}-${formData.city}-${formData.state}`)
-
       const houseData: any = {
         name: formData.name,
-        slug: slug, // SEO-friendly URL slug
         city: formData.city,
         state: formData.state,
         theme: formData.theme,
@@ -502,6 +498,8 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
       if (editingHouse) {
         // Update existing house - preserve admin_status (don't reset it)
         // Only update admin_status if it's explicitly being changed (not in this flow)
+        // Don't include slug when editing - it may not exist in the database yet,
+        // and if it does, the trigger will handle regeneration if needed
         const { data: updateData, error: updateError } = await supabase
           .from('houses')
           .update(houseData)
@@ -518,13 +516,15 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
           description: `${formData.name} has been updated.`,
         })
       } else {
-        // Create new house
+        // Create new house - include slug for new houses only
+        const slug = generateSlug(`${formData.name}-${formData.city}-${formData.state}`)
         const { data: insertData, error: insertError } = await supabase
           .from('houses')
           .insert({
             ...houseData,
             host_id: user.id,
             admin_status: 'approved', // Auto-approve new houses (change to 'pending' if you want admin review)
+            slug: slug, // Only include slug for new houses
           })
           .select()
           .single()
