@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Mail, Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
+import SEO from '../components/SEO'
 
 function ContactPage() {
   const [formData, setFormData] = useState({
@@ -48,7 +49,14 @@ function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 md:py-16">
+    <>
+      <SEO
+        title="Contact Us"
+        description="Get in touch with HackerHouseHub. Have questions about hacker houses, listing your space, or general inquiries? We're here to help."
+        keywords="contact hackerhousehub, support, help, inquiries"
+        url="https://hackerhousehub.com/contact"
+      />
+      <div className="min-h-screen py-12 md:py-16">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
@@ -165,7 +173,8 @@ function ContactPage() {
           <p>We typically respond within 24-48 hours.</p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

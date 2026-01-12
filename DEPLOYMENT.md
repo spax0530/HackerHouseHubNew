@@ -92,6 +92,7 @@ This guide will walk you through deploying HackerHouseHub to production, includi
    - Open `.env` in your editor
    - Replace `your_supabase_project_url` with your actual Supabase Project URL
    - Replace `your_supabase_anon_key` with your actual Supabase anon key
+   - Replace `your_openai_api_key` with your actual OpenAI API key (for AI enhancement features)
    - Save the file
 
 3. **Test locally**
@@ -129,6 +130,7 @@ This guide will walk you through deploying HackerHouseHub to production, includi
    - Add the following:
      - `VITE_SUPABASE_URL` = Your Supabase Project URL
      - `VITE_SUPABASE_ANON_KEY` = Your Supabase anon key
+     - `VITE_OPENAI_API_KEY` = Your OpenAI API key (for AI enhancement features)
    - Make sure to add them for **Production**, **Preview**, and **Development**
    - Click **Save**
 

@@ -7,6 +7,7 @@ import AddHouseWizard from '../components/AddHouseWizard'
 import HouseCard from '../components/HouseCard'
 import EmptyState from '../components/EmptyState'
 import ApplicationReviewDrawer from '../components/ApplicationReviewDrawer'
+import Avatar from '../components/Avatar'
 import { useAuth } from '../context/AuthContext'
 import { supabase, type House } from '../lib/supabase'
 
@@ -56,7 +57,7 @@ function HostDashboardPage() {
 
       setHostHouses(formattedHouses)
 
-      // 2. Fetch applications for these houses
+      // 2. Fetch applications for these houses with applicant profile data
       if (formattedHouses.length > 0) {
         const houseIds = formattedHouses.map(h => h.id)
         const { data: appsData, error: appsError } = await supabase
@@ -65,6 +66,9 @@ function HostDashboardPage() {
             *,
             house:houses (
               name
+            ),
+            applicant:profiles!applications_applicant_id_fkey (
+              avatar_url
             )
           `)
           .in('house_id', houseIds)
@@ -80,6 +84,7 @@ function HostDashboardPage() {
           houseName: app.house?.name,
           appliedAt: app.created_at,
           status: app.status,
+          applicantAvatar: app.applicant?.avatar_url || null,
           // Map snake_case to camelCase for components if needed, or pass raw
           ...app
         }))
@@ -208,7 +213,7 @@ function HostDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 -my-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 pt-16 -mb-8">
       <div className="flex min-h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <DashboardSidebar currentTab={currentTab} onChangeTab={setCurrentTab} />
@@ -307,11 +312,20 @@ function HostDashboardPage() {
                       {applications.slice(0, 5).map((app) => (
                         <tr key={app.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {app.applicantName}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {app.email}
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                src={app.applicantAvatar}
+                                alt={app.applicantName}
+                                size="md"
+                              />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {app.applicantName}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  {app.email}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
@@ -486,11 +500,20 @@ function HostDashboardPage() {
                       {applications.map((app) => (
                         <tr key={app.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {app.applicantName}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {app.email}
+                            <div className="flex items-center gap-3">
+                              <Avatar
+                                src={app.applicantAvatar}
+                                alt={app.applicantName}
+                                size="md"
+                              />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {app.applicantName}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  {app.email}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">

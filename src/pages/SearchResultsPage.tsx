@@ -9,6 +9,7 @@ import MapView from '../components/MapView'
 import Pagination from '../components/Pagination'
 import EmptyState from '../components/EmptyState'
 import { HouseCardSkeleton } from '../components/LoadingSkeleton'
+import SEO from '../components/SEO'
 import type { HouseTheme } from '../context/AppContext'
 import { supabase, type House } from '../lib/supabase'
 
@@ -309,8 +310,36 @@ function SearchResultsPage() {
     )
   }, [selectedLocations, selectedThemes, priceRange, duration, capacity, status])
 
+  // Generate SEO title and description based on filters
+  const seoTitle = useMemo(() => {
+    const parts: string[] = []
+    if (selectedThemes.length > 0) {
+      parts.push(selectedThemes.join(', '))
+    }
+    if (selectedLocations.length > 0) {
+      parts.push(`in ${selectedLocations.join(', ')}`)
+    }
+    return parts.length > 0 
+      ? `${parts.join(' ')} Hacker Houses`
+      : 'Search Hacker Houses'
+  }, [selectedThemes, selectedLocations])
+
+  const seoDescription = useMemo(() => {
+    if (selectedThemes.length > 0 || selectedLocations.length > 0) {
+      return `Find ${selectedThemes.length > 0 ? selectedThemes.join(' and ') : ''} hacker houses ${selectedLocations.length > 0 ? `in ${selectedLocations.join(', ')}` : ''}. Connect with startup communities and find your perfect coliving space.`
+    }
+    return 'Browse our collection of hacker houses and startup communities. Filter by location, theme, price, and more to find your perfect coliving space.'
+  }, [selectedThemes, selectedLocations])
+
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <>
+      <SEO
+        title={seoTitle}
+        description={seoDescription}
+        keywords={`${selectedThemes.join(', ')}, ${selectedLocations.join(', ')}, hacker house, coliving, startup community`.replace(/,\s*,/g, ',')}
+        url={`https://hackerhousehub.com/search${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
+      />
+      <div className="min-h-screen bg-white dark:bg-slate-950">
       {/* Search Header */}
       <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-gray-800 sticky top-16 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -487,7 +516,8 @@ function SearchResultsPage() {
         setStatus={setStatus}
         onClearAll={handleClearAll}
       />
-    </div>
+      </div>
+    </>
   )
 }
 

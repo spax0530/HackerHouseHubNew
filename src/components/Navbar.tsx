@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Building2, Sun, Moon, Menu, User, LogOut } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import Avatar from './Avatar'
 import MobileMenu from './MobileMenu'
 
 function Navbar() {
@@ -10,6 +11,7 @@ function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSignOut = async () => {
     await signOut()
@@ -19,8 +21,8 @@ function Navbar() {
 
   const isHost = profile?.role === 'host'
   const isBuilder = profile?.role === 'applicant'
-  // Users can switch roles, so we show options based on current role
-  // But we can add a "Switch Role" option in the profile menu
+  // When on admin routes, don't show builder/host navigation links
+  const isOnAdminRoute = location.pathname.startsWith('/admin')
 
   return (
     <>
@@ -41,7 +43,8 @@ function Navbar() {
               {/* Common Links - show for all authenticated users */}
               {user && (
                 <>
-                  {!isHost && (
+                  {/* Don't show builder/host links when on admin routes */}
+                  {!isOnAdminRoute && !isHost && (
                     <>
                       <NavLink
                         to="/"
@@ -87,7 +90,7 @@ function Navbar() {
                     </>
                   )}
 
-                  {isBuilder && (
+                  {!isOnAdminRoute && isBuilder && (
                     <NavLink
                       to="/applications"
                       className={({ isActive }) =>
@@ -102,7 +105,7 @@ function Navbar() {
                     </NavLink>
                   )}
 
-                  {isHost && (
+                  {!isOnAdminRoute && isHost && (
                     <NavLink
                       to="/host/dashboard"
                       className={({ isActive }) =>
@@ -179,8 +182,8 @@ function Navbar() {
               {/* Auth Section */}
               {user ? (
                 <>
-                  {/* List Your House (Host Only or if user is host) */}
-                  {isHost && (
+                  {/* List Your House (Host Only or if user is host) - Hide on admin routes */}
+                  {isHost && !isOnAdminRoute && (
                     <Link
                       to="/host/dashboard?add=true"
                       className="hidden sm:inline-flex items-center px-3 md:px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
@@ -194,11 +197,11 @@ function Navbar() {
                     to="/profile"
                     className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
-                    {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="Profile" className="w-5 h-5 rounded-full object-cover" />
-                    ) : (
-                        <User size={16} />
-                    )}
+                    <Avatar
+                      src={profile?.avatar_url}
+                      alt={profile?.full_name || user.email?.split('@')[0] || 'User'}
+                      size="sm"
+                    />
                     <div className="flex flex-col items-start">
                       <span className="font-medium max-w-[100px] truncate">{profile?.full_name || user.email?.split('@')[0]}</span>
                       {profile?.role && (

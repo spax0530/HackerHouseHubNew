@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom'
-import { X, LogOut, User, Settings } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { X, LogOut, Settings } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import Avatar from './Avatar'
 
 interface MobileMenuProps {
   isOpen: boolean
@@ -11,11 +12,14 @@ interface MobileMenuProps {
 function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const { favorites } = useAppContext()
   const { user, profile, signOut, isAdmin } = useAuth()
+  const location = useLocation()
   
   if (!isOpen) return null
 
   const isHost = profile?.role === 'host'
   const isBuilder = profile?.role === 'applicant'
+  // When on admin routes, don't show builder/host navigation links
+  const isOnAdminRoute = location.pathname.startsWith('/admin')
 
   const handleSignOut = async () => {
     await signOut()
@@ -40,8 +44,8 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     // Users can switch roles in Profile Settings
     const links = []
     
-    // Builder features (show when not in host mode)
-    if (!isHost) {
+    // Builder features (show when not in host mode and not on admin routes)
+    if (!isHost && !isOnAdminRoute) {
       links.push(
         { path: '/', label: 'Home' },
         { path: '/search', label: 'Search Houses' },
@@ -53,8 +57,8 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       }
     }
     
-    // Host features
-    if (isHost) {
+    // Host features (hide on admin routes)
+    if (isHost && !isOnAdminRoute) {
       links.push({ path: '/host/dashboard', label: 'Host Dashboard' })
     }
     
@@ -101,13 +105,11 @@ function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               className="block p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300 overflow-hidden">
-                    {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                        <User size={20} />
-                    )}
-                  </div>
+                  <Avatar
+                    src={profile?.avatar_url}
+                    alt={profile?.full_name || user.email || 'User'}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                       {profile?.full_name || user.email}

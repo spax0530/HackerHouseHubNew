@@ -101,6 +101,14 @@ function ProfilePage() {
     e.preventDefault()
     if (!user) return
 
+    // Require avatar before saving
+    if (!formData.avatar_url) {
+      toast.error('Please upload a profile photo before saving', {
+        description: 'Profile photos are required for all users.',
+      })
+      return
+    }
+
     setLoading(true)
     try {
       const { error } = await supabase
@@ -111,6 +119,7 @@ function ProfilePage() {
           linkedin_url: formData.linkedin_url,
           github_url: formData.github_url,
           website_url: formData.website_url,
+          avatar_url: formData.avatar_url, // Ensure avatar is saved
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)
@@ -234,10 +243,17 @@ function ProfilePage() {
                 />
               </div>
               <div className="flex-1 text-center sm:text-left">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Profile Picture</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  Profile Picture <span className="text-red-500">*</span>
+                </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Upload a photo to help hosts and builders recognize you.
+                  Upload a photo to help hosts and builders recognize you. Profile photo is required.
                 </p>
+                {!formData.avatar_url && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1 font-medium">
+                    Please upload a profile photo
+                  </p>
+                )}
               </div>
             </div>
 
@@ -330,7 +346,7 @@ function ProfilePage() {
             <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-800">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.avatar_url}
                 className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Saving...' : 'Save Changes'}

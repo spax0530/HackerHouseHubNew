@@ -1,9 +1,17 @@
 import { Building2, Users, Home, Sparkles, CheckCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import SEO from '../components/SEO'
 
 function AboutPage() {
   return (
-    <div className="min-h-screen py-12 md:py-16">
+    <>
+      <SEO
+        title="About Us"
+        description="Learn about HackerHouseHub - a platform connecting ambitious builders with collaborative living spaces designed for innovation and growth."
+        keywords="about hackerhousehub, coliving platform, startup community, hacker house network"
+        url="https://hackerhousehub.com/about"
+      />
+      <div className="min-h-screen py-12 md:py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12 md:mb-16">
@@ -168,7 +176,8 @@ function AboutPage() {
           </p>
         </section>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

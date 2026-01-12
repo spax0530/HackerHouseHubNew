@@ -1,0 +1,13 @@
+# Robots.txt for HackerHouseHub
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /host/dashboard
+Disallow: /applications
+Disallow: /profile
+Disallow: /auth/
+
+# Sitemap
+Sitemap: https://hackerhousehub.com/sitemap.xml
+

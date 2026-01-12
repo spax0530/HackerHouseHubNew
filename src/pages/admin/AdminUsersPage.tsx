@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Search, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import Avatar from '../../components/Avatar'
 import { useAuth } from '../../context/AuthContext'
 import { supabase, type Profile } from '../../lib/supabase'
 
@@ -108,7 +109,7 @@ function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 -my-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 pt-16 -mb-8">
       <div className="flex min-h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <AdminSidebar currentTab="users" />
@@ -174,13 +175,11 @@ function AdminUsersPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
                         {/* Avatar */}
-                        <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-                          {userProfile.avatar_url ? (
-                            <img src={userProfile.avatar_url} alt={userProfile.full_name || ''} className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="text-gray-400" size={24} />
-                          )}
-                        </div>
+                        <Avatar
+                          src={userProfile.avatar_url}
+                          alt={userProfile.full_name || 'User'}
+                          size="md"
+                        />
 
                         {/* User Info */}
                         <div className="flex-1">

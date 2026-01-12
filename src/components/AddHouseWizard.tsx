@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload, ArrowUp, ArrowDown, Plus } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, CheckCircle, Link as LinkIcon, Upload, ArrowUp, ArrowDown, Plus, Sparkles, Eye } from 'lucide-react'
 import { toast } from 'sonner'
+import ReactQuill from 'react-quill'
+import 'react-quill/dist/quill.snow.css'
 import type { HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase, type House } from '../lib/supabase'
 import { uploadHouseImage } from '../lib/storage'
 import { generateSlug } from '../lib/utils'
 import { CityStateAutocomplete } from './CityStateAutocomplete'
+import { enhanceText } from '../lib/openai'
+import HousePreviewModal from './HousePreviewModal'
 
 interface AddHouseWizardProps {
   open: boolean
@@ -15,16 +19,20 @@ interface AddHouseWizardProps {
   editingHouse?: House | null // Optional house to edit
 }
 
-interface HouseFormData {
+export interface HouseFormData {
   // Step 1
   name: string
   city: string
   state: string
-  theme: HouseTheme | ''
+  theme: HouseTheme | '' | 'Custom'
+  customTheme: string
   capacity: number
   // Step 2
   pricePerMonth: number
   duration: string
+  durationType: 'fixed' | 'flexible'
+  durationValue: number
+  durationUnit: 'days' | 'months'
   status: 'Recruiting Now' | 'Full' | 'Closed'
   // Step 3
   description: string
@@ -62,9 +70,13 @@ const restoreFormData = (): { formData: Partial<HouseFormData>; step: number; im
           city: parsed.city || '',
           state: parsed.state || '',
           theme: parsed.theme || '',
+          customTheme: parsed.customTheme || '',
           capacity: parsed.capacity || 0,
           pricePerMonth: parsed.pricePerMonth || 0,
           duration: parsed.duration || '',
+          durationType: parsed.durationType || 'fixed',
+          durationValue: parsed.durationValue || 0,
+          durationUnit: parsed.durationUnit || 'months',
           status: parsed.status || 'Recruiting Now',
           description: parsed.description || '',
           highlights: parsed.highlights || '',
@@ -100,10 +112,14 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     name: restored.formData.name || '',
     city: restored.formData.city || '',
     state: restored.formData.state || '',
-    theme: (restored.formData.theme as HouseTheme) || '',
+    theme: (restored.formData.theme as HouseTheme | 'Custom') || '',
+    customTheme: restored.formData.customTheme || '',
     capacity: restored.formData.capacity || 0,
     pricePerMonth: restored.formData.pricePerMonth || 0,
     duration: restored.formData.duration || '',
+    durationType: restored.formData.durationType || 'fixed',
+    durationValue: restored.formData.durationValue || 0,
+    durationUnit: restored.formData.durationUnit || 'months',
     status: (restored.formData.status as 'Recruiting Now' | 'Full' | 'Closed') || 'Recruiting Now',
     description: restored.formData.description || '',
     highlights: restored.formData.highlights || '',
@@ -114,19 +130,47 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     existingImages: [],
   })
 
+  const [showPreview, setShowPreview] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [enhancingDescription, setEnhancingDescription] = useState(false)
+  const [enhancingAmenities, setEnhancingAmenities] = useState(false)
+
   // Load house data when editing
   useEffect(() => {
     if (open && editingHouse) {
       // Populate form with existing house data
       const existingImages = editingHouse.images || []
+      const themeOptions: (HouseTheme | 'Custom')[] = ['AI', 'Climate', 'Hardware', 'Crypto', 'General Startup']
+      const isCustomTheme = !themeOptions.includes(editingHouse.theme as HouseTheme)
+      
+      // Parse duration
+      const durationStr = editingHouse.duration || ''
+      let durationType: 'fixed' | 'flexible' = 'fixed'
+      let durationValue = 0
+      let durationUnit: 'days' | 'months' = 'months'
+      
+      if (durationStr.toLowerCase().includes('depending')) {
+        durationType = 'flexible'
+      } else {
+        const match = durationStr.match(/(\d+)\s*(day|month)/i)
+        if (match) {
+          durationValue = parseInt(match[1])
+          durationUnit = match[2].toLowerCase().startsWith('day') ? 'days' : 'months'
+        }
+      }
+      
       setFormData({
         name: editingHouse.name || '',
         city: editingHouse.city || '',
         state: editingHouse.state || '',
-        theme: (editingHouse.theme as HouseTheme) || '',
+        theme: isCustomTheme ? 'Custom' : (editingHouse.theme as HouseTheme),
+        customTheme: isCustomTheme ? editingHouse.theme : '',
         capacity: editingHouse.capacity || 0,
         pricePerMonth: editingHouse.price_per_month || 0,
         duration: editingHouse.duration || '',
+        durationType,
+        durationValue,
+        durationUnit,
         status: editingHouse.status || 'Recruiting Now',
         description: editingHouse.description || '',
         highlights: editingHouse.highlights?.join('\n') || '',
@@ -159,9 +203,13 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
           city: '',
           state: '',
           theme: '',
+          customTheme: '',
           capacity: 0,
           pricePerMonth: 0,
           duration: '',
+          durationType: 'fixed',
+          durationValue: 0,
+          durationUnit: 'months',
           status: 'Recruiting Now',
           description: '',
           highlights: '',
@@ -188,9 +236,13 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
             city: formData.city,
             state: formData.state,
             theme: formData.theme,
+            customTheme: formData.customTheme,
             capacity: formData.capacity,
             pricePerMonth: formData.pricePerMonth,
             duration: formData.duration,
+            durationType: formData.durationType,
+            durationValue: formData.durationValue,
+            durationUnit: formData.durationUnit,
             status: formData.status,
             description: formData.description,
             highlights: formData.highlights,
@@ -355,21 +407,97 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
+        const themeValid = formData.theme !== '' && (formData.theme !== 'Custom' || formData.customTheme.trim() !== '')
         return (
           formData.name.trim() !== '' &&
           formData.city.trim() !== '' &&
           formData.state.trim() !== '' &&
-          formData.theme !== '' &&
+          themeValid &&
           formData.capacity > 0
         )
       case 2:
-        return formData.pricePerMonth > 0 && formData.duration !== ''
+        const durationValid = formData.durationType === 'flexible' || 
+          (formData.durationType === 'fixed' && formData.durationValue > 0)
+        return formData.pricePerMonth >= 0 && durationValid
       case 3:
         return formData.description.trim() !== ''
       case 4:
         return formData.imagePreviews.length > 0 // Allow existing images when editing
       default:
         return true
+    }
+  }
+
+  // Update duration string when duration fields change
+  useEffect(() => {
+    if (formData.durationType === 'flexible') {
+      if (formData.duration !== 'Depending on applicant') {
+        setFormData(prev => ({ ...prev, duration: 'Depending on applicant' }))
+      }
+    } else if (formData.durationType === 'fixed' && formData.durationValue > 0) {
+      const unit = formData.durationUnit === 'days' ? 'day' : 'month'
+      const plural = formData.durationValue > 1 ? 's' : ''
+      const newDuration = `${formData.durationValue} ${unit}${plural}`
+      if (formData.duration !== newDuration) {
+        setFormData(prev => ({ ...prev, duration: newDuration }))
+      }
+    }
+  }, [formData.durationType, formData.durationValue, formData.durationUnit])
+
+  // Get final theme value (custom or selected)
+  const getFinalTheme = (): string => {
+    return formData.theme === 'Custom' ? formData.customTheme : formData.theme
+  }
+
+  // AI enhancement handlers
+  const handleEnhanceDescription = async () => {
+    if (!formData.description.trim()) {
+      toast.error('Please enter a description first')
+      return
+    }
+
+    setEnhancingDescription(true)
+    try {
+      const enhanced = await enhanceText({ text: formData.description, context: 'description' })
+      updateField('description', enhanced)
+      toast.success('Description enhanced!')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enhance description')
+    } finally {
+      setEnhancingDescription(false)
+    }
+  }
+
+  const handleEnhanceAmenities = async () => {
+    const amenitiesText = formData.amenities.join(', ')
+    if (!amenitiesText.trim()) {
+      toast.error('Please add some amenities first')
+      return
+    }
+
+    setEnhancingAmenities(true)
+    try {
+      const enhanced = await enhanceText({ text: amenitiesText, context: 'amenities' })
+      // Parse enhanced text back into array (split by commas, newlines, or bullets)
+      const enhancedList = enhanced
+        .split(/[,\n•\-\*]/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+      
+      // Merge with existing amenities, avoiding duplicates
+      const merged = [...formData.amenities]
+      enhancedList.forEach(item => {
+        if (!merged.includes(item)) {
+          merged.push(item)
+        }
+      })
+      
+      updateField('amenities', merged)
+      toast.success('Amenities enhanced!')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enhance amenities')
+    } finally {
+      setEnhancingAmenities(false)
     }
   }
 
@@ -385,12 +513,21 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
     }
   }
 
+  const handlePublishClick = () => {
+    if (!validateStep(4)) {
+      toast.error('Please complete all required fields')
+      return
+    }
+    setShowConfirmModal(true)
+  }
+
   const handlePublish = async () => {
     if (!user) {
       toast.error('You must be logged in to publish a house')
       return
     }
 
+    setShowConfirmModal(false)
     setIsSubmitting(true)
 
     try {
@@ -480,7 +617,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         name: formData.name,
         city: formData.city,
         state: formData.state,
-        theme: formData.theme,
+        theme: getFinalTheme(),
         price_per_month: formData.pricePerMonth,
         duration: formData.duration,
         capacity: formData.capacity,
@@ -523,7 +660,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
           .insert({
             ...houseData,
             host_id: user.id,
-            admin_status: 'approved', // Auto-approve new houses (change to 'pending' if you want admin review)
+            admin_status: 'pending', // New houses require admin review
             slug: slug, // Only include slug for new houses
           })
           .select()
@@ -534,9 +671,17 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
 
         if (error) throw error
 
-        toast.success('House published successfully', {
-          description: `${formData.name} is now live on the platform!`,
-        })
+        // Show message based on actual admin_status
+        const adminStatus = data?.admin_status || 'pending'
+        if (adminStatus === 'pending') {
+          toast.success('House submitted for review', {
+            description: `We'll notify you once ${formData.name} is approved.`,
+          })
+        } else {
+          toast.success('House published successfully', {
+            description: `${formData.name} is now live on the platform!`,
+          })
+        }
       }
 
       // Notify parent
@@ -558,9 +703,13 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         city: '',
         state: '',
         theme: '',
+        customTheme: '',
         capacity: 0,
         pricePerMonth: 0,
         duration: '',
+        durationType: 'fixed',
+        durationValue: 0,
+        durationUnit: 'months',
         status: 'Recruiting Now',
         description: '',
         highlights: '',
@@ -570,6 +719,8 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
         imagePreviews: [],
         existingImages: [],
       })
+      setShowPreview(false)
+      setShowConfirmModal(false)
       onOpenChange(false)
     } catch (error: any) {
       console.error('Error publishing house:', error)
@@ -683,7 +834,7 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                 </label>
                 <select
                   value={formData.theme}
-                  onChange={(e) => updateField('theme', e.target.value as HouseTheme)}
+                  onChange={(e) => updateField('theme', e.target.value as HouseTheme | 'Custom')}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select theme</option>
@@ -692,7 +843,17 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                   <option value="Hardware">Hardware</option>
                   <option value="Crypto">Crypto</option>
                   <option value="General Startup">General Startup</option>
+                  <option value="Custom">Custom</option>
                 </select>
+                {formData.theme === 'Custom' && (
+                  <input
+                    type="text"
+                    value={formData.customTheme}
+                    onChange={(e) => updateField('customTheme', e.target.value)}
+                    placeholder="Enter custom theme"
+                    className="w-full mt-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -736,17 +897,52 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Typical Duration <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={formData.duration}
-                  onChange={(e) => updateField('duration', e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select duration</option>
-                  <option value="1-3 months">1-3 months</option>
-                  <option value="3-6 months">3-6 months</option>
-                  <option value="6-12 months">6-12 months</option>
-                  <option value="12+ months">12+ months</option>
-                </select>
+                <div className="space-y-3">
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="durationType"
+                        value="fixed"
+                        checked={formData.durationType === 'fixed'}
+                        onChange={() => updateField('durationType', 'fixed')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Fixed Duration</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="durationType"
+                        value="flexible"
+                        checked={formData.durationType === 'flexible'}
+                        onChange={() => updateField('durationType', 'flexible')}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Depending on Applicant</span>
+                    </label>
+                  </div>
+                  {formData.durationType === 'fixed' && (
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.durationValue || ''}
+                        onChange={(e) => updateField('durationValue', parseInt(e.target.value) || 0)}
+                        placeholder="Number"
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <select
+                        value={formData.durationUnit}
+                        onChange={(e) => updateField('durationUnit', e.target.value as 'days' | 'months')}
+                        className="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="days">Days</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -774,16 +970,74 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                 Details & Amenities
               </h3>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => updateField('description', e.target.value)}
-                  rows={6}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="Describe your hacker house..."
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleEnhanceDescription}
+                    disabled={enhancingDescription || !formData.description.trim()}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Sparkles size={14} />
+                    {enhancingDescription ? 'Enhancing...' : 'Enhance with AI'}
+                  </button>
+                </div>
+                <div className="rich-text-editor">
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.description}
+                    onChange={(value) => updateField('description', value)}
+                    placeholder="Describe your hacker house..."
+                    modules={{
+                      toolbar: [
+                        ['bold', 'italic'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      ],
+                    }}
+                    className="bg-white dark:bg-slate-900"
+                  />
+                </div>
+                <style>{`
+                  .rich-text-editor .ql-container {
+                    min-height: 150px;
+                    font-size: 14px;
+                  }
+                  .rich-text-editor .ql-editor {
+                    color: rgb(17 24 39);
+                  }
+                  .dark .rich-text-editor .ql-editor {
+                    color: rgb(241 245 249);
+                  }
+                  .rich-text-editor .ql-toolbar {
+                    border-color: rgb(209 213 219);
+                    border-radius: 0.5rem 0.5rem 0 0;
+                  }
+                  .dark .rich-text-editor .ql-toolbar {
+                    border-color: rgb(51 65 85);
+                    background: rgb(15 23 42);
+                  }
+                  .rich-text-editor .ql-container {
+                    border-color: rgb(209 213 219);
+                    border-radius: 0 0 0.5rem 0.5rem;
+                  }
+                  .dark .rich-text-editor .ql-container {
+                    border-color: rgb(51 65 85);
+                  }
+                  .rich-text-editor .ql-stroke {
+                    stroke: rgb(107 114 128);
+                  }
+                  .dark .rich-text-editor .ql-stroke {
+                    stroke: rgb(148 163 184);
+                  }
+                  .rich-text-editor .ql-fill {
+                    fill: rgb(107 114 128);
+                  }
+                  .dark .rich-text-editor .ql-fill {
+                    fill: rgb(148 163 184);
+                  }
+                `}</style>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -798,9 +1052,20 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amenities
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Amenities
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleEnhanceAmenities}
+                    disabled={enhancingAmenities || formData.amenities.length === 0}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Sparkles size={14} />
+                    {enhancingAmenities ? 'Enhancing...' : 'Enhance with AI'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   {availableAmenities.map((amenity) => (
                     <label
@@ -1003,10 +1268,10 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
                     <span className="font-medium">Location:</span> {formData.city}, {formData.state}
                   </p>
                   <p>
-                    <span className="font-medium">Theme:</span> {formData.theme}
+                    <span className="font-medium">Theme:</span> {getFinalTheme()}
                   </p>
                   <p>
-                    <span className="font-medium">Price:</span> ${formData.pricePerMonth}/mo
+                    <span className="font-medium">Price:</span> ${formData.pricePerMonth === 0 ? 'Free' : `${formData.pricePerMonth}/mo`}
                   </p>
                   <p>
                     <span className="font-medium">Capacity:</span> {formData.capacity} residents
@@ -1046,18 +1311,77 @@ function AddHouseWizard({ open, onOpenChange, onHouseAdded, editingHouse }: AddH
               <ChevronRight size={18} />
             </button>
           ) : (
-            <button
-              onClick={handlePublish}
-              disabled={isSubmitting}
-              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSubmitting 
-                ? (editingHouse ? 'Updating...' : 'Publishing...') 
-                : (editingHouse ? 'Update House' : 'Publish House')}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowPreview(true)}
+                disabled={!validateStep(4)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                <Eye size={18} />
+                Preview
+              </button>
+              <button
+                onClick={handlePublishClick}
+                disabled={isSubmitting || !validateStep(4)}
+                className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting 
+                  ? (editingHouse ? 'Updating...' : 'Publishing...') 
+                  : (editingHouse ? 'Update House' : 'Publish House')}
+              </button>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <HousePreviewModal
+          open={showPreview}
+          onClose={() => setShowPreview(false)}
+          formData={{
+            ...formData,
+            theme: getFinalTheme(),
+          } as HouseFormData & { theme: string }}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowConfirmModal(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md mx-4 z-50 p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Confirm Publication
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Your house listing will be reviewed by our team before going live. If any edits are needed, you will be contacted. For questions, contact{' '}
+              <a href="mailto:Help@HackerHouseHub.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+                Help@HackerHouseHub.com
+              </a>
+              .
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={isSubmitting}
+                className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Confirm Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { FileText, Search, Calendar, MapPin, User, Mail, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { FileText, Search, MapPin, User, Mail, CheckCircle, XCircle, Clock, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import ApplicationReviewDrawer from '../../components/ApplicationReviewDrawer'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -27,6 +28,7 @@ interface ApplicationWithHouse {
   status: 'Pending' | 'Accepted' | 'Rejected'
   created_at: string
   updated_at: string
+  applicantAvatar?: string | null
   house: {
     id: number
     slug: string | null
@@ -46,6 +48,8 @@ function AdminApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [houseFilter, setHouseFilter] = useState<string>('all')
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationWithHouse | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -59,18 +63,14 @@ function AdminApplicationsPage() {
 
     try {
       setLoading(true)
+      
+      // First, fetch applications with applicant profile data
       let query = supabase
         .from('applications')
         .select(`
           *,
-          house:houses (
-            id,
-            slug,
-            name,
-            city,
-            state,
-            images,
-            price_per_month
+          applicant:profiles!applications_applicant_id_fkey (
+            avatar_url
           )
         `)
         .order('created_at', { ascending: false })
@@ -85,14 +85,109 @@ function AdminApplicationsPage() {
         query = query.eq('house_id', parseInt(houseFilter))
       }
 
-      const { data, error } = await query
+      const { data: applicationsData, error: applicationsError } = await query
 
-      if (error) throw error
+      if (applicationsError) {
+        console.error('Error fetching applications:', applicationsError)
+        console.error('Error details:', {
+          message: applicationsError.message,
+          details: applicationsError.details,
+          hint: applicationsError.hint,
+          code: applicationsError.code
+        })
+        
+        // Provide more specific error messages
+        if (applicationsError.code === 'PGRST116') {
+          toast.error('No applications found. Check if RLS policies allow admin access.')
+        } else if (applicationsError.code === '42703') {
+          // Column doesn't exist error - might be related to slug column in RLS policies
+          if (applicationsError.message?.includes('slug')) {
+            toast.error('Database schema issue: slug column missing. Running migration 005_add_slug_to_houses.sql may help, but applications should still load.')
+            console.warn('Slug column error detected, but continuing to fetch applications without house slug data')
+            // Don't throw - try to continue without slug data
+            setApplications([])
+            return
+          } else {
+            toast.error('Database schema issue detected. Please check your database schema.')
+            throw applicationsError
+          }
+        } else if (applicationsError.message?.includes('permission denied') || applicationsError.message?.includes('policy')) {
+          toast.error('Permission denied. Verify admin role and RLS policies.')
+        } else {
+          toast.error(`Failed to load applications: ${applicationsError.message}`)
+        }
+        throw applicationsError
+      }
 
-      setApplications((data as ApplicationWithHouse[]) || [])
+      console.log('Fetched applications:', applicationsData?.length || 0, 'applications')
+
+      if (!applicationsData || applicationsData.length === 0) {
+        setApplications([])
+        return
+      }
+
+      // Now fetch house details for each application
+      const houseIds = [...new Set(applicationsData.map(app => app.house_id))]
+      
+      let housesData: any[] | null = null
+      let housesError: any = null
+      
+      // Only fetch houses if we have house IDs
+      if (houseIds.length > 0) {
+        // First try without slug (safer - slug column may not exist)
+        const { data: housesWithoutSlug, error: housesErrorWithoutSlug } = await supabase
+          .from('houses')
+          .select('id, name, city, state, images, price_per_month')
+          .in('id', houseIds)
+        
+          housesData = housesWithoutSlug
+          housesError = housesErrorWithoutSlug
+        
+        // If successful, try to also fetch slug (optional)
+        if (!housesError && housesData) {
+          try {
+            const { data: housesWithSlug, error: slugError } = await supabase
+              .from('houses')
+              .select('id, slug')
+              .in('id', houseIds)
+            
+            if (!slugError && housesWithSlug) {
+              // Merge slug data into housesData
+              const slugMap = new Map(housesWithSlug.map(h => [h.id, h.slug]))
+              housesData = housesData.map(house => ({
+                ...house,
+                slug: slugMap.get(house.id) || null
+              }))
+            }
+          } catch (slugErr) {
+            // Ignore slug errors - it's optional
+            console.warn('Slug column not available, continuing without it')
+          }
+        }
+      }
+
+      if (housesError) {
+        console.error('Error fetching houses:', housesError)
+        // Continue even if house fetch fails - we'll just show applications without house details
+        toast.warning('Applications loaded, but some house details may be missing')
+      }
+
+      // Create a map of house_id -> house
+      const housesMap = new Map(
+        (housesData || []).map(house => [house.id, house])
+      )
+
+      // Combine applications with house data and applicant avatar
+      const applicationsWithHouses: ApplicationWithHouse[] = applicationsData.map(app => ({
+        ...app,
+        house: housesMap.get(app.house_id) || null,
+        applicantAvatar: app.applicant?.avatar_url || null
+      }))
+
+      setApplications(applicationsWithHouses)
     } catch (error) {
       console.error('Error fetching applications:', error)
-      toast.error('Failed to load applications')
+      // Error toast already shown above
     } finally {
       setLoading(false)
     }
@@ -141,6 +236,59 @@ function AdminApplicationsPage() {
     )
   })
 
+  const handleViewApplication = (application: ApplicationWithHouse) => {
+    setSelectedApplication(application)
+    setIsDrawerOpen(true)
+  }
+
+  const handleStatusChange = async (applicationId: string, status: 'Accepted' | 'Rejected') => {
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({ status })
+        .eq('id', applicationId)
+
+      if (error) throw error
+
+      toast.success(`Application ${status.toLowerCase()}`, {
+        description: `The application status has been updated.`,
+      })
+
+      // Refresh applications
+      fetchApplications()
+    } catch (error: any) {
+      console.error('Error updating application status:', error)
+      toast.error('Failed to update application status', {
+        description: error.message || 'Please try again.',
+      })
+    }
+  }
+
+  // Convert ApplicationWithHouse to format expected by ApplicationReviewDrawer
+  const formatApplicationForDrawer = (app: ApplicationWithHouse) => {
+    return {
+      id: app.id,
+      applicantName: app.applicant_name,
+      email: app.email,
+      phone: app.phone,
+      linkedin: app.linkedin,
+      portfolio: app.portfolio,
+      current_role: app.current_role,
+      company: app.company,
+      skills: app.skills,
+      years_experience: app.years_experience,
+      building_what: app.building_what,
+      why_this_house: app.why_this_house,
+      duration_preference: app.duration_preference,
+      move_in_date: app.move_in_date,
+      custom_answers: app.custom_answers,
+      status: app.status,
+      appliedAt: app.created_at,
+      houseName: app.house?.name || 'Unknown House',
+      applicantAvatar: app.applicantAvatar || null,
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen pt-24 flex justify-center bg-gray-50 dark:bg-slate-950">
@@ -154,7 +302,7 @@ function AdminApplicationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 -my-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 pt-16 -mb-8">
       <div className="flex min-h-[calc(100vh-4rem)]">
         <AdminSidebar currentTab="applications" />
         <div className="flex-1 p-6 md:p-8 overflow-x-hidden">
@@ -164,7 +312,7 @@ function AdminApplicationsPage() {
                 Applications Management
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                View and manage all applications across all houses
+                View and manage all applications across all houses. Click the 👁️ icon next to any applicant name to view full application details.
               </p>
             </div>
 
@@ -226,23 +374,23 @@ function AdminApplicationsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto relative">
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48">
                           Applicant
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           House
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                           Details
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
                           Date
                         </th>
                       </tr>
@@ -253,23 +401,30 @@ function AdminApplicationsPage() {
                           key={application.id}
                           className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                                <User size={20} className="text-blue-600 dark:text-blue-400" />
+                          <td className="px-3 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                                <User size={16} className="text-blue-600 dark:text-blue-400" />
                               </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                   {application.applicant_name}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                  <Mail size={12} />
-                                  {application.email}
+                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
+                                  <Mail size={10} />
+                                  <span className="truncate">{application.email}</span>
                                 </div>
                               </div>
+                              <button
+                                onClick={() => handleViewApplication(application)}
+                                className="ml-2 p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors flex-shrink-0"
+                                title="View full application"
+                              >
+                                <Eye size={14} />
+                              </button>
                             </div>
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
                             {application.house ? (
                               <Link
                                 to={`/house/${application.house.slug || application.house.id}`}
@@ -282,22 +437,22 @@ function AdminApplicationsPage() {
                             )}
                             {application.house && (
                               <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                                <MapPin size={12} />
+                                <MapPin size={10} />
                                 {application.house.city}, {application.house.state}
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-4">
-                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                          <td className="px-3 py-4 hidden lg:table-cell">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 max-w-xs">
                               {application.current_role && (
-                                <div>
+                                <div className="truncate">
                                   <span className="font-medium">Role:</span> {application.current_role}
                                   {application.company && ` at ${application.company}`}
                                 </div>
                               )}
                               {application.years_experience && (
                                 <div>
-                                  <span className="font-medium">Experience:</span> {application.years_experience} years
+                                  <span className="font-medium">Exp:</span> {application.years_experience}y
                                 </div>
                               )}
                               {application.duration_preference && (
@@ -307,20 +462,19 @@ function AdminApplicationsPage() {
                               )}
                               {application.move_in_date && (
                                 <div>
-                                  <span className="font-medium">Move-in:</span> {new Date(application.move_in_date).toLocaleDateString()}
+                                  <span className="font-medium">Move-in:</span> {new Date(application.move_in_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-3 py-4 whitespace-nowrap">
                             {getStatusBadge(application.status)}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-gray-100">
-                              {new Date(application.created_at).toLocaleDateString()}
+                          <td className="px-3 py-4 whitespace-nowrap hidden md:table-cell">
+                            <div className="text-xs text-gray-900 dark:text-gray-100">
+                              {new Date(application.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                              <Calendar size={12} />
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(application.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </td>
@@ -362,6 +516,19 @@ function AdminApplicationsPage() {
           </div>
         </div>
       </div>
+
+      {/* Application Review Drawer */}
+      {selectedApplication && (
+        <ApplicationReviewDrawer
+          open={isDrawerOpen}
+          onClose={() => {
+            setIsDrawerOpen(false)
+            setSelectedApplication(null)
+          }}
+          application={formatApplicationForDrawer(selectedApplication)}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   )
 }

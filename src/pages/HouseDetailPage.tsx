@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import SEO from '../components/SEO'
 import {
   MapPin,
   Wifi,
@@ -22,6 +23,7 @@ import EmptyState from '../components/EmptyState'
 import MapView from '../components/MapView'
 import ApplicationModal from '../components/ApplicationModal'
 import ExternalLinkWarningModal from '../components/ExternalLinkWarningModal'
+import Avatar from '../components/Avatar'
 import { useAppContext, type HouseTheme } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -40,7 +42,7 @@ interface Resident {
 
 interface Host {
   name: string
-  avatar: string
+  avatar: string | null
   verified: boolean
   responseTime: string
   hostedSince: string
@@ -170,7 +172,7 @@ function HouseDetailPage() {
             residents: [],
             host: {
               name: data.host?.full_name || 'Host',
-              avatar: data.host?.avatar_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+              avatar: data.host?.avatar_url || null, // Use null instead of mock photo
               verified: false,
               responseTime: 'within 24 hours',
               hostedSince: new Date(data.created_at).getFullYear().toString(),
@@ -237,11 +239,35 @@ function HouseDetailPage() {
     )
   }
 
+  // Generate structured data for the house
+  const houseStructuredData = house ? {
+    '@context': 'https://schema.org',
+    '@type': 'LodgingBusiness',
+    name: house.name,
+    description: house.description,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: house.city,
+      addressRegion: house.state,
+      addressCountry: 'US',
+    },
+    priceRange: `$${house.pricePerMonth}/month`,
+    amenities: house.amenities,
+    image: house.images[0] || '',
+    url: `https://hackerhousehub.com/house/${house.slug || house.id}`,
+  } : null
+
   if (!house) {
     return (
-      <div className="min-h-screen flex items-center justify-center py-12">
-        <EmptyState
-          title="House not found"
+      <>
+        <SEO 
+          title="House Not Found"
+          description="The hacker house you're looking for doesn't exist or has been removed."
+          noindex
+        />
+        <div className="min-h-screen flex items-center justify-center py-12">
+          <EmptyState
+            title="House not found"
           description="The house you're looking for doesn't exist or has been removed."
         />
       </div>
@@ -318,11 +344,22 @@ function HouseDetailPage() {
   // Reviews feature removed
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
-      {/* Hero Image Carousel */}
-      <HouseImageCarousel
-        images={house.images}
-        houseId={house.id}
+    <>
+      <SEO
+        title={house.name}
+        description={house.description || `${house.name} - A ${house.theme} hacker house in ${house.city}, ${house.state}. ${house.capacity} residents, $${house.pricePerMonth}/month.`}
+        keywords={`${house.name}, ${house.theme} hacker house, ${house.city}, ${house.state}, coliving, startup community, ${house.theme.toLowerCase()} house`}
+        image={house.images[0] || ''}
+        url={`https://hackerhousehub.com/house/${house.slug || house.id}`}
+        type="article"
+        structuredData={houseStructuredData}
+        canonicalUrl={`https://hackerhousehub.com/house/${house.slug || house.id}`}
+      />
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        {/* Hero Image Carousel */}
+        <HouseImageCarousel
+          images={house.images}
+          houseId={house.id}
         houseName={house.name}
         houseCity={house.city}
         houseTheme={house.theme}
@@ -559,10 +596,10 @@ function HouseDetailPage() {
               {/* Host Card */}
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <img
+                  <Avatar
                     src={house.host.avatar}
                     alt={house.host.name}
-                    className="w-16 h-16 rounded-full object-cover"
+                    size="lg"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -625,7 +662,8 @@ function HouseDetailPage() {
         externalLink={house.applicationLink || ''}
         houseName={house.name}
       />
-    </div>
+      </div>
+    </>
   )
 }
 

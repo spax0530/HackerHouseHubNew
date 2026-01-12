@@ -1,11 +1,12 @@
 import { Linkedin, Twitter } from 'lucide-react'
+import Avatar from '../Avatar'
 
 interface Resident {
   id: number
   name: string
   role: string
   bio: string
-  avatar: string
+  avatar: string | null
   linkedin?: string
   twitter?: string
 }
@@ -28,10 +29,10 @@ function ResidentsSection({ residents }: ResidentsSectionProps) {
             key={resident.id}
             className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 hover:shadow-md transition-shadow"
           >
-            <img
+            <Avatar
               src={resident.avatar}
               alt={resident.name}
-              className="w-16 h-16 rounded-full object-cover flex-shrink-0"
+              size="lg"
             />
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">

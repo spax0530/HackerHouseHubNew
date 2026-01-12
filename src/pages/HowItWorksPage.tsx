@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Search, Building2, Users, CheckCircle, ArrowRight, Mail } from 'lucide-react'
+import SEO from '../components/SEO'
 
 function HowItWorksPage() {
   const steps = [
@@ -52,7 +53,14 @@ function HowItWorksPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <>
+      <SEO
+        title="How It Works"
+        description="Learn how to find and join hacker houses, or list your own house on HackerHouseHub. Simple steps to connect builders with collaborative living spaces."
+        keywords="how to join hacker house, list hacker house, coliving guide, startup community guide"
+        url="https://hackerhousehub.com/how-it-works"
+      />
+      <div className="min-h-screen bg-white dark:bg-slate-950">
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-sky-950/20 pt-24 pb-16 md:pt-32 md:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -199,7 +207,8 @@ function HowItWorksPage() {
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   )
 }
 

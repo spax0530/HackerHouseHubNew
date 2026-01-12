@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import Avatar from './Avatar'
 
 interface ApplicationReviewDrawerProps {
   open: boolean
@@ -68,13 +69,20 @@ function ApplicationReviewDrawer({
       <div className="relative bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col z-50 md:mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Review Application
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {application.applicantName} · {application.houseName}
-            </p>
+          <div className="flex items-center gap-4">
+            <Avatar
+              src={application.applicantAvatar}
+              alt={application.applicantName}
+              size="lg"
+            />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Review Application
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {application.applicantName} · {application.houseName}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -193,12 +201,22 @@ function ApplicationReviewDrawer({
                       </p>
                     </div>
                 )}
+                {application.years_experience !== null && application.years_experience !== undefined && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Years of Experience
+                      </label>
+                      <p className="text-base text-gray-900 dark:text-gray-100 mt-1">
+                        {application.years_experience} {application.years_experience === 1 ? 'year' : 'years'}
+                      </p>
+                    </div>
+                )}
                 {application.skills && (
                     <div>
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Skills
                       </label>
-                      <p className="text-base text-gray-900 dark:text-gray-100 mt-1">
+                      <p className="text-base text-gray-900 dark:text-gray-100 mt-1 whitespace-pre-wrap">
                         {application.skills}
                       </p>
                     </div>
@@ -230,6 +248,20 @@ function ApplicationReviewDrawer({
                       </label>
                       <p className="text-base text-gray-900 dark:text-gray-100 mt-1">
                         {application.duration_preference}
+                      </p>
+                    </div>
+                )}
+                {application.move_in_date && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Preferred Move-in Date
+                      </label>
+                      <p className="text-base text-gray-900 dark:text-gray-100 mt-1">
+                        {new Date(application.move_in_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
                       </p>
                     </div>
                 )}

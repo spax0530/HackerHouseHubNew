@@ -98,7 +98,7 @@ function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 -my-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 -mx-4 sm:-mx-6 lg:-mx-8 pt-16 -mb-8">
       <div className="flex min-h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <AdminSidebar currentTab="overview" />
