@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Search, Mail } from 'lucide-react'
+import { Search, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import Avatar from '../../components/Avatar'

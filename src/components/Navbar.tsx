@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Building2, Sun, Moon, Menu, User, LogOut } from 'lucide-react'
+import { Building2, Sun, Moon, Menu, LogOut } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'

@@ -255,7 +255,7 @@ function HouseDetailPage() {
     amenities: house.amenities,
     image: house.images[0] || '',
     url: `https://hackerhousehub.com/house/${house.slug || house.id}`,
-  } : null
+  } : undefined
 
   if (!house) {
     return (
@@ -268,9 +268,10 @@ function HouseDetailPage() {
         <div className="min-h-screen flex items-center justify-center py-12">
           <EmptyState
             title="House not found"
-          description="The house you're looking for doesn't exist or has been removed."
-        />
-      </div>
+            description="The house you're looking for doesn't exist or has been removed."
+          />
+        </div>
+      </>
     )
   }
 
